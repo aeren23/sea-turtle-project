@@ -1,0 +1,32 @@
+# Dataset
+archiveu
+data/
+dataset/
+datasets/
+raw_data/
+*.zip
+*.tar.gz
+*.rar
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+.venv
+env/
+build/
+dist/
+
+# .NET / C#
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+
+# OS Files
+.DS_Store
+Thumbs.db
