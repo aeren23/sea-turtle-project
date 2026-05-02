@@ -165,39 +165,8 @@ def create_tasks(agents: dict[str, Agent]) -> list[Task]:
         ),
     )
 
-    # ----- Task 4: Final Decision (Orchestrator) -----
-    final_decision_task = Task(
-        description=(
-            "You are the Research Orchestrator. Synthesize the findings from all three "
-            "sub-agents (Data Researcher, CV Researcher, DL Strategist) into a unified "
-            "strategic decision document. Your final report must include:\n"
-            "1. **Executive Summary**: One-paragraph overview of the recommended approach.\n"
-            "2. **Dataset Strategy**: Which datasets to use, augmentation plan, expected "
-            "total training size.\n"
-            "3. **Preprocessing Pipeline**: The finalized step-by-step pipeline based on "
-            "the CV Researcher's findings.\n"
-            "4. **Model Architecture**: The chosen model, training strategy, and evaluation plan.\n"
-            "5. **Risk Assessment**: Key risks and mitigation strategies.\n"
-            "6. **Implementation Roadmap**: Suggested order of implementation with milestones.\n\n"
-            "Make concrete decisions — do not just summarize. Choose one primary approach "
-            "for each component and justify your choice.\n\n"
-            f"You MUST save your final decision document using the FileWriteTool to this exact path: "
-            f"{final_decision_filepath}"
-        ),
-        expected_output=(
-            "A comprehensive final decision Markdown document with all 6 sections, "
-            "containing concrete recommendations, chosen approaches, and a clear "
-            "implementation roadmap for the SeaTurtle Photo-ID project."
-        ),
-        agent=agents["orchestrator"],
-        callback=_create_task_callback(
-            "Research Orchestrator", ORCHESTRATOR_OUTPUT_DIR
-        ),
-    )
-
     return [
         dataset_research_task,
         preprocessing_research_task,
         model_research_task,
-        final_decision_task,
     ]

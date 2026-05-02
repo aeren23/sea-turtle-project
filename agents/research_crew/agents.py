@@ -45,7 +45,6 @@ def _create_orchestrator(llm) -> Agent:
             "sub-agents need to run based on the user's request — you may activate "
             "all three or only the ones relevant to the query."
         ),
-        tools=MANAGER_TOOLS,
         llm=llm,
         allow_delegation=True,
         verbose=True,
