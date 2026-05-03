@@ -11,6 +11,7 @@ Usage:
 import sys
 from pathlib import Path
 
+import os
 from dotenv import load_dotenv
 
 # Ensure the project root is in sys.path so that 'agents' package can be imported
