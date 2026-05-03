@@ -50,7 +50,7 @@ def main():
         train_dataset, 
         batch_size=batch_size, 
         sampler=train_sampler,
-        num_workers=4,
+        num_workers=0,
         pin_memory=True
     )
 

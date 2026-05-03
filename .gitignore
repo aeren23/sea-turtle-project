@@ -30,3 +30,7 @@ obj/
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Models & Logs
+checkpoints/
+*.pth

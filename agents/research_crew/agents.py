@@ -170,6 +170,37 @@ def _create_dl_strategist(llm) -> Agent:
     )
 
 
+def _create_biologist(llm) -> Agent:
+    """Creates the Marine Biologist agent.
+
+    Specializes in sea turtle anatomy, post-ocular scale patterns, and ensures
+    biological validity of AI processing.
+
+    Args:
+        llm: The LLM instance to use for this agent.
+
+    Returns:
+        Agent: The configured Marine Biologist agent.
+    """
+    return Agent(
+        role="Marine Biologist & Sea Turtle Expert",
+        goal=(
+            "Provide domain expertise on sea turtle anatomy, specifically post-ocular scale "
+            "patterns, and ensure AI models focus on true biological identifiers rather than image artifacts."
+        ),
+        backstory=(
+            "You are an expert marine biologist at DEKAMER with years of experience studying sea turtles. "
+            "You know that each turtle's facial scale pattern is as unique as a fingerprint. Your job is "
+            "to guide the computer vision and deep learning agents, ensuring their algorithms respect "
+            "biological realities and focus on the correct anatomical features of Caretta caretta and Chelonia mydas."
+        ),
+        tools=RESEARCHER_TOOLS,
+        llm=llm,
+        allow_delegation=False,
+        verbose=True,
+    )
+
+
 def create_agents() -> dict[str, Agent]:
     """Factory function that creates and returns all crew agents.
 
@@ -178,7 +209,7 @@ def create_agents() -> dict[str, Agent]:
 
     Returns:
         dict[str, Agent]: A dictionary mapping role keys to Agent instances.
-            Keys: 'orchestrator', 'data_researcher', 'cv_researcher', 'dl_strategist'.
+            Keys: 'orchestrator', 'data_researcher', 'cv_researcher', 'dl_strategist', 'biologist'.
     """
     llm = create_llm()
 
@@ -187,4 +218,5 @@ def create_agents() -> dict[str, Agent]:
         "data_researcher": _create_data_researcher(llm),
         "cv_researcher": _create_cv_researcher(llm),
         "dl_strategist": _create_dl_strategist(llm),
+        "biologist": _create_biologist(llm),
     }

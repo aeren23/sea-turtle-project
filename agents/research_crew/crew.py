@@ -26,15 +26,18 @@ def build_crew() -> Crew:
     agents_dict = create_agents()
     tasks_list = create_tasks(agents_dict)
 
+    from crewai import Process
+
     crew = Crew(
         agents=[
+            agents_dict["orchestrator"],
             agents_dict["data_researcher"],
             agents_dict["cv_researcher"],
             agents_dict["dl_strategist"],
+            agents_dict["biologist"],
         ],
         tasks=tasks_list,
-        process=Process.hierarchical,
-        manager_agent=agents_dict["orchestrator"],
+        process=Process.sequential,
         verbose=True,
     )
 

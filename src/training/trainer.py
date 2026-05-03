@@ -7,6 +7,7 @@ import logging
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+from src.training.metrics import compute_top_k_accuracy
 
 class MetricLearningTrainer:
     """
@@ -99,12 +100,17 @@ class MetricLearningTrainer:
         map_score = metrics["mean_average_precision"]
         top1_score = metrics["precision_at_1"]
         
-        msg = f"Epoch {epoch} Eval -> mAP: {map_score:.4f} | Top-1: {top1_score:.4f}"
+        # Calculate Top-5 manually using distance matrix
+        distances = torch.cdist(query_embeddings, gallery_embeddings).numpy()
+        top5_score = compute_top_k_accuracy(distances, query_labels.numpy(), gallery_labels.numpy(), k=5)
+        
+        msg = f"Epoch {epoch} Eval -> mAP: {map_score:.4f} | Top-1: {top1_score:.4f} | Top-5: {top5_score:.4f}"
         print(msg)
         self.logger.info(msg)
         
         self.writer.add_scalar("Eval/mAP", map_score, epoch)
         self.writer.add_scalar("Eval/Top1", top1_score, epoch)
+        self.writer.add_scalar("Eval/Top5", top5_score, epoch)
         
         return map_score
         

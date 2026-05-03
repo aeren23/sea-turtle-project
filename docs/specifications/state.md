@@ -5,14 +5,16 @@
 This document tracks the high-level progress, completed milestones, and current active phase of the SeaTurtle Photo-ID project. It is intended to provide immediate context to any AI Agent joining the workspace.
 
 ## 🟢 Current Phase: Phase 2 - Deep Learning Implementation
-**Status:** In Progress
+**Status:** Completed
 
-We are currently building the PyTorch training pipeline for the CNN.
+The PyTorch training pipeline for the CNN is fully built, debugged, and executed.
 *   **Focus:** Metric Learning (Open-Set Identification).
-*   **Active Tasks:**
-    *   Implementing `pytorch-metric-learning` with Triplet Margin Loss.
-    *   Building the `train.py` loop with Hard Negative Mining.
-    *   Implementing Top-K Accuracy and mAP evaluation metrics.
+*   **Completed Tasks:**
+    *   `pytorch-metric-learning` with Triplet Margin Loss implemented.
+    *   `train.py` loop with Hard Negative Mining built.
+    *   Top-K Accuracy and mAP evaluation metrics active.
+    *   Dependency bugs (Albumentations keyword args, FAISS missing, API deprecations) fixed.
+    *   Full 20-Epoch training loop executed on GPU, best model saved to `checkpoints/best_turtle_resnet.pth`.
 
 ---
 

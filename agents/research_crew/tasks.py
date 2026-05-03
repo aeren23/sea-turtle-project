@@ -13,6 +13,7 @@ from agents.research_crew.config import (
     CV_RESEARCHER_OUTPUT_DIR,
     DATA_RESEARCHER_OUTPUT_DIR,
     DL_STRATEGIST_OUTPUT_DIR,
+    BIOLOGIST_OUTPUT_DIR,
     ORCHESTRATOR_OUTPUT_DIR,
 )
 from agents.research_crew.utils.log_writer import append_log, generate_output_filename
@@ -34,7 +35,14 @@ def _create_task_callback(agent_name: str, output_dir: str):
     """
     def callback(output: TaskOutput) -> None:
         raw_output = output.raw if output.raw else "No output produced"
-        # Truncate to keep log entries concise
+        
+        # Save the full output to the agent's directory
+        filename = generate_output_filename(f"{agent_name.replace(' ', '_').lower()}_report")
+        file_path = output_dir / filename
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(raw_output)
+
+        # Truncate for the log file
         max_summary_length = 500
         summary = raw_output[:max_summary_length]
         if len(raw_output) > max_summary_length:
@@ -43,130 +51,78 @@ def _create_task_callback(agent_name: str, output_dir: str):
         append_log(
             author=agent_name,
             content=f"Task completed successfully. Output summary: {summary}",
-            files_affected=str(output_dir),
+            files_affected=str(file_path),
         )
 
     return callback
 
 
 def create_tasks(agents: dict[str, Agent]) -> list[Task]:
-    """Creates all research tasks with dynamic filenames and callbacks.
+    """Creates individual research tasks for all agents.
 
-    Each task instructs its assigned agent to save output via FileWriteTool
-    to a timestamped file in the agent's dedicated output directory.
+    Each agent receives the user's request and processes it from their
+    domain's perspective. The Orchestrator runs last to synthesize everything.
 
     Args:
         agents: Dictionary of agents from create_agents(), keyed by role identifier.
 
     Returns:
-        list[Task]: An ordered list of tasks for the crew to execute.
+        list[Task]: A list containing sequential tasks for the crew.
     """
-    # Generate unique timestamped filenames for this run
-    dataset_filename = generate_output_filename("dataset_analysis")
-    preprocessing_filename = generate_output_filename("preprocessing_strategy")
-    model_filename = generate_output_filename("model_strategy")
-    final_decision_filename = generate_output_filename("final_decision")
-
-    # Build full relative paths (relative to project root, for FileWriteTool)
-    dataset_filepath = f"{DATA_RESEARCHER_OUTPUT_DIR}/{dataset_filename}"
-    preprocessing_filepath = f"{CV_RESEARCHER_OUTPUT_DIR}/{preprocessing_filename}"
-    model_filepath = f"{DL_STRATEGIST_OUTPUT_DIR}/{model_filename}"
-    final_decision_filepath = f"{ORCHESTRATOR_OUTPUT_DIR}/{final_decision_filename}"
-
-    # ----- Task 1: Dataset Research -----
-    dataset_research_task = Task(
+    data_task = Task(
         description=(
-            "Research publicly available sea turtle photo datasets suitable for "
-            "Photo-ID (individual identification via post-ocular facial scale patterns). "
-            "Investigate sources like Kaggle, GitHub, academic repositories, and WILDBOOK. "
-            "For each dataset found, document: name, source URL, size, species covered, "
-            "image quality, annotation type, and relevance to facial scale pattern recognition. "
-            "Also recommend data augmentation strategies (rotation, color jitter, horizontal flip, "
-            "elastic deformation) that preserve the biological validity of scale patterns, "
-            "considering the project's constraint of ~600 existing images.\n\n"
-            f"You MUST save your complete findings using the FileWriteTool to this exact path: "
-            f"{dataset_filepath}"
+            "Analyze the dataset implications of the following user request:\n\n"
+            "User Request: {user_request}\n\n"
+            "Focus purely on dataset constraints, augmentation needs, and image quality."
         ),
-        expected_output=(
-            "A comprehensive Markdown report containing: "
-            "(1) A table of discovered datasets with metadata, "
-            "(2) Quality assessment for each dataset, "
-            "(3) Recommended augmentation pipeline with justification, "
-            "(4) Estimated effective dataset size after augmentation."
-        ),
+        expected_output="A brief report on dataset considerations.",
         agent=agents["data_researcher"],
-        callback=_create_task_callback(
-            "Data Researcher", DATA_RESEARCHER_OUTPUT_DIR
-        ),
+        callback=_create_task_callback("Data Researcher", DATA_RESEARCHER_OUTPUT_DIR)
     )
 
-    # ----- Task 2: Preprocessing Strategy Research -----
-    preprocessing_research_task = Task(
+    cv_task = Task(
         description=(
-            "Research and design an OpenCV-based image preprocessing pipeline for "
-            "underwater sea turtle photographs. The pipeline must handle:\n"
-            "1. **Face Detection & Cropping**: Isolate the turtle's head profile, "
-            "discarding body and background.\n"
-            "2. **Angle/Perspective Correction**: Use Affine Transformations to align "
-            "the face profile to a standard horizontal orientation using eye landmarks.\n"
-            "3. **Light & Contrast Optimization**: Apply CLAHE (Contrast Limited Adaptive "
-            "Histogram Equalization) to equalize underwater lighting variations.\n"
-            "4. **Underwater Color Correction**: Compensate for blue/green color cast "
-            "typical of underwater environments.\n"
-            "5. **Output Standardization**: Produce 224x224 RGB images suitable for CNN input.\n\n"
-            "For each technique, provide: the OpenCV function name, recommended parameters, "
-            "and why it is appropriate for this specific use case.\n\n"
-            f"You MUST save your complete findings using the FileWriteTool to this exact path: "
-            f"{preprocessing_filepath}"
+            "Analyze the computer vision preprocessing implications of the following user request:\n\n"
+            "User Request: {user_request}\n\n"
+            "Focus purely on image normalization, alignment, and filtering."
         ),
-        expected_output=(
-            "A detailed Markdown report containing: "
-            "(1) Step-by-step preprocessing pipeline with OpenCV function calls, "
-            "(2) Recommended parameter values for each step, "
-            "(3) Before/after description for each transformation, "
-            "(4) Pipeline execution order rationale."
-        ),
+        expected_output="A brief report on CV preprocessing considerations.",
         agent=agents["cv_researcher"],
-        callback=_create_task_callback(
-            "CV Researcher", CV_RESEARCHER_OUTPUT_DIR
-        ),
+        callback=_create_task_callback("CV Researcher", CV_RESEARCHER_OUTPUT_DIR)
     )
 
-    # ----- Task 3: Model Strategy Research -----
-    model_research_task = Task(
+    dl_task = Task(
         description=(
-            "Research and recommend the optimal deep learning architecture and training "
-            "strategy for sea turtle Photo-ID with a small dataset (~600 images). "
-            "Compare these approaches:\n"
-            "1. **Classification CNN** (ResNet-50, EfficientNet-B0): Fine-tuned from ImageNet "
-            "for direct individual turtle classification.\n"
-            "2. **Metric Learning** (Siamese Network, Triplet Loss): Learning an embedding "
-            "space where same-turtle images cluster together.\n"
-            "3. **Hybrid Approaches**: Combining classification with embedding-based retrieval.\n\n"
-            "For each approach, analyze: architecture details, transfer learning strategy, "
-            "loss function, optimizer, expected performance with ~600 images, scalability "
-            "when new turtles are added, and computational requirements.\n\n"
-            "The model must accept 224x224 RGB inputs (matching the CV Researcher's "
-            "preprocessing pipeline output).\n\n"
-            f"You MUST save your complete findings using the FileWriteTool to this exact path: "
-            f"{model_filepath}"
+            "Analyze the deep learning architecture and training metrics based on the following user request:\n\n"
+            "User Request: {user_request}\n\n"
+            "Focus purely on model metrics (Loss, Accuracy, mAP) and training strategies (Epochs, Overfitting)."
         ),
-        expected_output=(
-            "A detailed Markdown report containing: "
-            "(1) Comparison table of architectures with pros/cons, "
-            "(2) Recommended primary approach with justification, "
-            "(3) Transfer learning and fine-tuning strategy, "
-            "(4) Training hyperparameters (learning rate, batch size, epochs), "
-            "(5) Evaluation metrics (accuracy, precision, recall, F1, mAP)."
-        ),
+        expected_output="A detailed report analyzing the model's metrics and training strategy.",
         agent=agents["dl_strategist"],
-        callback=_create_task_callback(
-            "DL Strategist", DL_STRATEGIST_OUTPUT_DIR
-        ),
+        callback=_create_task_callback("DL Strategist", DL_STRATEGIST_OUTPUT_DIR)
     )
 
-    return [
-        dataset_research_task,
-        preprocessing_research_task,
-        model_research_task,
-    ]
+    bio_task = Task(
+        description=(
+            "Analyze the biological feasibility of the following user request:\n\n"
+            "User Request: {user_request}\n\n"
+            "Focus purely on sea turtle anatomy, post-ocular scale patterns, and the biological impact of Few-Shot data."
+        ),
+        expected_output="A detailed biological analysis of the scale patterns and dataset limitations.",
+        agent=agents["biologist"],
+        callback=_create_task_callback("Marine Biologist", BIOLOGIST_OUTPUT_DIR)
+    )
+
+    orchestrator_task = Task(
+        description=(
+            "Review the reports generated by the Data Researcher, CV Researcher, DL Strategist, and Marine Biologist "
+            "regarding the user request:\n\n"
+            "User Request: {user_request}\n\n"
+            "Synthesize their findings into a cohesive, final strategic decision document."
+        ),
+        expected_output="A comprehensive final report synthesizing all expert findings and addressing the user's core question.",
+        agent=agents["orchestrator"],
+        callback=_create_task_callback("Research Orchestrator", ORCHESTRATOR_OUTPUT_DIR)
+    )
+
+    return [data_task, cv_task, dl_task, bio_task, orchestrator_task]
