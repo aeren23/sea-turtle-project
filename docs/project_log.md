@@ -121,3 +121,10 @@
     4.  **Color Corrected:** Neutralizes the characteristic underwater "cyan shift" to restore natural scale contrast and pattern clarity.
     5.  **Final Resized:** Standardizes input to 224x224 (RGB) for ResNet-50 compatibility.
 * **Issues & Resolutions:** Resolved the Orchestrator/Sub-agent conflict regarding augmentation. **Horizontal Flip is strictly banned** to respect biological asymmetry of turtle scale patterns.
+
+---
+### [2026-05-03 15:31:17] — Antigravity / Architecture Decision
+* **Action/Task:** Architectural Pivot: Shifted from Closed-Set Classification (Softmax) to Open-Set Identification (Metric Learning). Sea turtles will be identified using 512-d embeddings via Triplet Loss/ArcFace. This allows dynamic addition of new turtle individuals to the database without retraining the entire CNN. Metrics changed from standard Accuracy to Top-1/Top-5 Accuracy and mAP.
+* **Files Affected:** docs/project_log.md, docs/reports/metric_learning_strategy.md, src/models/turtle_resnet.py
+* **Details/Decisions:** Architectural Pivot: Shifted from Closed-Set Classification (Softmax) to Open-Set Identification (Metric Learning). Sea turtles will be identified using 512-d embeddings via Triplet Loss/ArcFace. This allows dynamic addition of new turtle individuals to the database without retraining the entire CNN. Metrics changed from standard Accuracy to Top-1/Top-5 Accuracy and mAP.
+* **Issues & Resolutions:** None
