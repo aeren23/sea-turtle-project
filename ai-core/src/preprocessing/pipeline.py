@@ -73,18 +73,19 @@ class TurtlePreprocessingPipeline:
         if bbox is not None:
             current_image = crop_image_by_bbox(current_image, bbox)
 
-        # 2. Light & Contrast Optimization (CLAHE)
+        # 2. Standardization (Resize) 
+        # Using INTER_LINEAR as recommended by CV Researcher for up/down scaling consistency
+        # Moved here to drastically reduce memory usage of subsequent filters
+        current_image = cv2.resize(current_image, self.target_size, interpolation=cv2.INTER_LINEAR)
+
+        # 3. Light & Contrast Optimization (CLAHE)
         current_image = apply_clahe(
             current_image, 
             clip_limit=self.clahe_clip, 
             tile_grid_size=self.clahe_tile
         )
 
-        # 3. Underwater Color Correction
+        # 4. Underwater Color Correction
         current_image = correct_underwater_color(current_image)
-
-        # 4. Standardization (Resize)
-        # Using INTER_LINEAR as recommended by CV Researcher for up/down scaling consistency
-        current_image = cv2.resize(current_image, self.target_size, interpolation=cv2.INTER_LINEAR)
 
         return current_image

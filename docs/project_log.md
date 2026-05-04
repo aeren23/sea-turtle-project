@@ -306,3 +306,60 @@ The Sea Turtle Photo-ID project has completed its Phase 2 training using the Res
 * **Files Affected:** C:\Users\alihe\OneDrive\Masaüstü\sea-turtle-project\docs\research_outputs\orchestrator\final_decision_20260504_011553.md
 * **Details/Decisions:** Research crew completed all tasks successfully. Final decision saved to final_decision_20260504_011553.md
 * **Issues & Resolutions:** None
+
+---
+### [2026-05-04 11:40:35] — Antigravity / AI Architect
+* **Action/Task:** Implemented Orientation-Aware Virtual Identities and optimized training pipeline.
+* **Files Affected:** src/data/dataset_parser.py, train.py, .gitignore
+* **Details/Decisions:** 
+    * **Issue:** Found that mixing left/right/top profiles under a single identity was causing a mathematical conflict in Metric Learning (mAP dropped to 1%). 
+    * **Resolution:** Modified the parser to create unique virtual identities for each orientation (e.g., ID_left, ID_right).
+    * **Performance:** Enabled 
+um_workers=4 and pin_memory=True in 	rain.py to solve the embedding extraction bottleneck on the CPU.
+    * **Safety:** New model will be saved as est_turtle_resnet_orientation.pth to preserve previous weights.
+* **Issues & Resolutions:** Resolved 'Profile Asymmetry Collapse' by separating orientations into virtual classes.
+
+---
+### [2026-05-04 13:25:00] � Antigravity / CLI Execution
+* **Action/Task:** Fixed OpenCV Memory Error during Preprocessing
+* **Files Affected:** src/preprocessing/filters.py, src/preprocessing/pipeline.py, src/training/trainer.py, docs/specifications/state.md
+* **Details/Decisions:** Moved cv2.resize to immediately after bbox crop to reduce peak memory usage of CLAHE and Color Correction from ~1.2MB to ~150KB per image. Optimized CLAHE and bbox cropping to use in-place assignment and contiguous copies. Added gc.collect() in trainer evaluation loop to prevent memory fragmentation on Windows.
+* **Issues & Resolutions:** Resolved (-4:Insufficient memory) cv::OutOfMemoryError in OpenCV on Windows.
+
+---
+
+---
+### [2026-05-04 15:28:56] — Antigravity / AI Architect
+* **Action/Task:** Implemented Phase A Model Improvements (ArcFace, Side-based Virtual IDs, LR Scheduler, Advanced Augmentations).
+* **Files Affected:** src/data/dataset_parser.py, src/training/loss.py, src/training/trainer.py, 	rain.py, src/data/augmentation.py, docs/specifications/state.md.
+* **Details/Decisions:** 
+  - Reduced 7 orientations to 3 biological sides (left/right/top) to preserve biological asymmetry while increasing samples per class.
+  - Replaced TripletLoss with **ArcFace Loss**. *Justification:* Triplet Loss is slow to converge and requires complex hard-negative mining (like MPerClassSampler) which was failing due to low samples per class. ArcFace provides a much stronger decision boundary via angular margin, is robust in fine-grained Re-ID tasks, and fundamentally eliminates the need for special samplers by computing loss across all classes simultaneously.
+  - Added CosineAnnealingWarmRestarts LR scheduler with a 3-epoch linear warmup.
+  - Introduced RandomResizedCrop, GridDistortion, GaussianBlur, and CoarseDropout to simulate harsh underwater conditions and prevent overfitting.
+* **Issues & Resolutions:** None
+
+---
+### [2026-05-04 17:14:28] — Antigravity / AI Architect
+* **Action/Task:** Completed Phase A Training & Evaluation.
+* **Files Affected:** docs/reports/phase_A_evaluation_report.md, docs/future_phases.md
+* **Details/Decisions:** 
+  - The 20-epoch training loop with the new ArcFace model concluded successfully.
+  - **Results:** The model achieved a Top-1 Accuracy of **49.69%** (up from 14.05%) and an mAP of **0.0679** (up from 0.0262). This validates the decision to use side-based virtual identities and ArcFace loss.
+  - A comprehensive breakdown comparing the baseline and the new model has been saved to docs/reports/phase_A_evaluation_report.md.
+  - Created docs/future_phases.md to document proposed architectural and metric learning upgrades (e.g., GeM Pooling, BNNeck, Backbone Upgrades) for future consideration.
+* **Issues & Resolutions:** Loss temporarily spiked around epoch 14 due to the CosineAnnealingWarmRestarts scheduler, but safely recovered and minimized as designed.
+
+---
+### [2026-05-04 17:51:53] — Antigravity / AI Architect
+* **Action/Task:** Project Restructured to Monorepo Architecture.
+* **Files Affected:** Root directory files and folders.
+* **Details/Decisions:** 
+  - Restructured the project into a Monorepo format to prepare for Phase 3 (Backend) and Phase 4 (Frontend).
+  - Created i-core/ directory and moved all AI-related code (src, 	rain.py, checkpoints, datasets, notebooks, 
+equirements.txt) into it.
+  - Renamed the scratch/ directory to scripts/ and placed it under i-core/.
+  - Scaffolded Clean Architecture directory structures for ackend/ (.NET) and rontend/ (React/Vue).
+  - Scaffolded i-service/ structure for future FastAPI implementation.
+  - The docs/ folder remains at the root level as shared knowledge.
+* **Issues & Resolutions:** None

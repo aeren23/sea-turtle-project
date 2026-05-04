@@ -1,20 +1,21 @@
 # SeaTurtle Photo-ID: Project State & History
 
-**Last Updated:** 2026-05-03
+**Last Updated:** 2026-05-04
 
 This document tracks the high-level progress, completed milestones, and current active phase of the SeaTurtle Photo-ID project. It is intended to provide immediate context to any AI Agent joining the workspace.
 
 ## 🟢 Current Phase: Phase 2 - Deep Learning Implementation
 **Status:** Completed
 
-The PyTorch training pipeline for the CNN is fully built, debugged, and executed.
+The PyTorch training pipeline for the CNN is fully built and recently refactored in **Phase A** to resolve embedding collapse and poor evaluation metrics (mAP ~2%).
 *   **Focus:** Metric Learning (Open-Set Identification).
 *   **Completed Tasks:**
-    *   `pytorch-metric-learning` with Triplet Margin Loss implemented.
-    *   `train.py` loop with Hard Negative Mining built.
-    *   Top-K Accuracy and mAP evaluation metrics active.
-    *   Dependency bugs (Albumentations keyword args, FAISS missing, API deprecations) fixed.
+    *   `pytorch-metric-learning` initially implemented with Triplet Margin Loss, later upgraded to **ArcFace Loss** to eliminate the need for complex hard-negative mining (like MPerClassSampler) and provide stronger decision boundaries.
+    *   Virtual Identities refactored: Mapped 7 orientation types to **3 biological sides** (left, right, top) to preserve biological asymmetry while improving samples-per-class ratio.
+    *   Learning Rate Scheduler (`CosineAnnealingWarmRestarts`) with linear warmup added to `train.py`.
+    *   Advanced data augmentations (Scale variation, GridDistortion, GaussianBlur, CoarseDropout) implemented via Albumentations to simulate harsh underwater conditions.
     *   Full 20-Epoch training loop executed on GPU, best model saved to `checkpoints/best_turtle_resnet.pth`.
+    *   OpenCV `cv::OutOfMemoryError` fixed during evaluation loop by moving Resize step earlier and optimizing memory allocations in `filters.py`.
 
 ---
 

@@ -16,7 +16,7 @@ class MetricLearningTrainer:
     This trainer utilizes the pytorch-metric-learning miner and loss function.
     """
     
-    def __init__(self, model, optimizer, loss_func, miner, device, save_dir="checkpoints"):
+    def __init__(self, model, optimizer, loss_func, device, miner=None, save_dir="checkpoints"):
         self.model = model
         self.optimizer = optimizer
         self.loss_func = loss_func
@@ -51,11 +51,13 @@ class MetricLearningTrainer:
             # Forward pass: Generate embeddings
             embeddings = self.model(images)
             
-            # Mine hard triplets
-            hard_pairs = self.miner(embeddings, labels)
-            
-            # Compute loss on the hard triplets
-            loss = self.loss_func(embeddings, labels, hard_pairs)
+            # Conditionally mine hard triplets if a miner is provided
+            if self.miner is not None:
+                hard_pairs = self.miner(embeddings, labels)
+                loss = self.loss_func(embeddings, labels, hard_pairs)
+            else:
+                # ArcFace loss does not need mining
+                loss = self.loss_func(embeddings, labels)
             
             # Backward pass & Optimize
             loss.backward()
@@ -118,6 +120,7 @@ class MetricLearningTrainer:
         all_embeddings = []
         all_labels = []
         
+        import gc
         with torch.no_grad():
             for images, labels in tqdm(dataloader, desc="Extracting", leave=False):
                 images = images.to(self.device)
@@ -125,6 +128,14 @@ class MetricLearningTrainer:
                 all_embeddings.append(embeddings.cpu())
                 all_labels.append(labels.cpu())
                 
+                # Help Windows avoid memory fragmentation
+                del images
+                del embeddings
+                
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            
         return torch.cat(all_embeddings), torch.cat(all_labels)
         
     def save_checkpoint(self, epoch, map_score, filename="best_model.pth"):

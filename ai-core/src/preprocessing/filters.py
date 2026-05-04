@@ -32,15 +32,13 @@ def apply_clahe(image: np.ndarray, clip_limit: float = 2.0, tile_grid_size: tupl
 
     # Convert to LAB color space
     lab_image = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    l_channel, a_channel, b_channel = cv2.split(lab_image)
 
-    # Apply CLAHE to L-channel
+    # Apply CLAHE directly to L-channel in-place to save memory
     clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
-    cl = clahe.apply(l_channel)
+    lab_image[:, :, 0] = clahe.apply(lab_image[:, :, 0])
 
-    # Merge channels and convert back to BGR
-    merged_lab = cv2.merge((cl, a_channel, b_channel))
-    final_image = cv2.cvtColor(merged_lab, cv2.COLOR_LAB2BGR)
+    # Convert back to BGR
+    final_image = cv2.cvtColor(lab_image, cv2.COLOR_LAB2BGR)
     
     return final_image
 
@@ -109,4 +107,4 @@ def crop_image_by_bbox(image: np.ndarray, bbox: list[float]) -> np.ndarray:
         raise ValueError("Bounding box dimensions must be positive and within image bounds.")
 
     cropped = image[y:y+h, x:x+w]
-    return cropped
+    return cropped.copy()
