@@ -320,7 +320,7 @@ um_workers=4 and pin_memory=True in 	rain.py to solve the embedding extraction b
 * **Issues & Resolutions:** Resolved 'Profile Asymmetry Collapse' by separating orientations into virtual classes.
 
 ---
-### [2026-05-04 13:25:00] — Antigravity / CLI Execution
+### [2026-05-04 13:25:00] ï¿½ Antigravity / CLI Execution
 * **Action/Task:** Fixed OpenCV Memory Error during Preprocessing
 * **Files Affected:** src/preprocessing/filters.py, src/preprocessing/pipeline.py, src/training/trainer.py, docs/specifications/state.md
 * **Details/Decisions:** Moved cv2.resize to immediately after bbox crop to reduce peak memory usage of CLAHE and Color Correction from ~1.2MB to ~150KB per image. Optimized CLAHE and bbox cropping to use in-place assignment and contiguous copies. Added gc.collect() in trainer evaluation loop to prevent memory fragmentation on Windows.
@@ -363,3 +363,30 @@ equirements.txt) into it.
   - Scaffolded i-service/ structure for future FastAPI implementation.
   - The docs/ folder remains at the root level as shared knowledge.
 * **Issues & Resolutions:** None
+
+---
+### [2026-05-04 22:45:00] ï¿½ Cascade / AI Coding Assistant
+* **Action/Task:** Built Phase 2.5 ï¿½ Embedding Gallery & FAISS Vector Store Pipeline.
+* **Files Affected:** src/config/data_config.py, src/identification/__init__.py, src/identification/embedding_extractor.py, src/identification/vector_store.py, src/identification/gallery_builder.py, src/identification/identifier.py, scripts/build_gallery.py, scripts/identify_turtle.py, 	ests/test_vector_store.py, 	ests/test_embedding_extractor.py, 	ests/test_identification.py, docs/specifications/state.md, docs/reports/phase2_5_embedding_gallery.md
+* **Details/Decisions:**
+  - Implemented the full identification pipeline: EmbeddingExtractor ï¿½ TurtleVectorStore ï¿½ GalleryBuilder ï¿½ TurtleIdentifier.
+  - **Critical Design Decision:** Used 3 separate FAISS IndexFlatIP indexes (left/right/top) instead of a single index to prevent cross-side noise during search. This preserves the biological asymmetry rule from Phase 1.
+  - **L2 Normalization Guarantee:** Added defensive F.normalize(embedding, p=2, dim=1) in EmbeddingExtractor on top of the model's own normalization, ensuring unit vectors for FAISS Inner Product (Cosine Similarity equivalence).
+  - **Manual Side Parameter:** TurtleIdentifier requires a Biological_side parameter from the user since no automatic orientation classifier exists yet. CLI uses --side left|right|top.
+  - Config additions: EMBEDDING_DIM=512, FAISS_INDEX_DIR, BIOLOGICAL_SIDES, IDENTIFICATION_THRESHOLD=0.6, TOP_K_RESULTS=5, CHECKPOINT_PATH.
+  - 18 unit/integration tests written and all passing (vector store CRUD, L2 norm guarantee, cross-side isolation, persistence, identification pipeline).
+* **Issues & Resolutions:** None
+
+---
+### [2026-05-04 23:09:00] — Cascade / AI Coding Assistant
+* **Action/Task:** Phase 2.5 — FAISS Gallery Build Executed & Unicode Path Bug Fixed.
+* **Files Affected:** src/identification/vector_store.py, gallery_index/faiss_left.bin, gallery_index/faiss_right.bin, gallery_index/faiss_top.bin, gallery_index/meta_left.json, gallery_index/meta_right.json, gallery_index/meta_top.json
+* **Details/Decisions:**
+  - **Bug Fixed:** aiss.write_index() C++ fopen() failed on Windows paths containing non-ASCII characters (Masaüstü/ü). Fixed by replacing with aiss.serialize_index() + Python open( wb) so Python handles all file I/O. Same pattern applied to load() with aiss.deserialize_index().
+  - **Gallery Build Result (8526 images, 0 skipped):**
+    - Left index  : 3906 vectors
+    - Right index : 3634 vectors
+    - Top index   :  986 vectors
+    - Total       : 8526 vectors
+  - All 6 gallery files written to gallery_index/ directory.
+* **Issues & Resolutions:** faiss.write_index() Unicode path failure › resolved by using serialize/deserialize pattern with Python file handles.

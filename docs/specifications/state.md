@@ -1,10 +1,28 @@
 # SeaTurtle Photo-ID: Project State & History
 
-**Last Updated:** 2026-05-04
+**Last Updated:** 2026-05-05
 
 This document tracks the high-level progress, completed milestones, and current active phase of the SeaTurtle Photo-ID project. It is intended to provide immediate context to any AI Agent joining the workspace.
 
-## 🟢 Current Phase: Phase 2 - Deep Learning Implementation
+## 🟢 Current Phase: Phase 2.5 - Embedding Gallery & FAISS Vector Store
+**Status:** Completed
+
+Built the full identification pipeline that converts all preprocessed turtle images into 512-d embeddings and stores them in a FAISS-based vector database for nearest-neighbour identity matching.
+*   **Focus:** Gallery construction, per-side FAISS indexing, identification service.
+*   **Completed Tasks:**
+    *   `EmbeddingExtractor` (`src/identification/embedding_extractor.py`): Loads trained checkpoint, extracts 512-d embeddings with defensive L2 normalization guarantee (`F.normalize`).
+    *   `TurtleVectorStore` (`src/identification/vector_store.py`): Manages **3 separate FAISS `IndexFlatIP` indexes** (left, right, top) to prevent cross-side noise. Each index paired with a JSON metadata file.
+    *   `GalleryBuilder` (`src/identification/gallery_builder.py`): Orchestrates full dataset → preprocess → embed → FAISS insertion pipeline with progress tracking.
+    *   `TurtleIdentifier` (`src/identification/identifier.py`): Query service with configurable similarity threshold. Reports "Unknown Individual" for sub-threshold matches. Requires manual `biological_side` parameter (no auto-classifier yet).
+    *   CLI scripts: `scripts/build_gallery.py` (builds 3 FAISS indexes) and `scripts/identify_turtle.py` (query with `--image` + `--side`).
+    *   Config updated: `EMBEDDING_DIM`, `FAISS_INDEX_DIR`, `BIOLOGICAL_SIDES`, `IDENTIFICATION_THRESHOLD`, `TOP_K_RESULTS`, `CHECKPOINT_PATH` added to `data_config.py`.
+    *   **18 unit/integration tests** all passing: vector store CRUD, L2 norm guarantee, cross-side isolation, persistence, identification pipeline.
+
+---
+
+## ✅ Completed Phases
+
+### Phase 2: Deep Learning Implementation
 **Status:** Completed
 
 The PyTorch training pipeline for the CNN is fully built and recently refactored in **Phase A** to resolve embedding collapse and poor evaluation metrics (mAP ~2%).
@@ -16,10 +34,6 @@ The PyTorch training pipeline for the CNN is fully built and recently refactored
     *   Advanced data augmentations (Scale variation, GridDistortion, GaussianBlur, CoarseDropout) implemented via Albumentations to simulate harsh underwater conditions.
     *   Full 20-Epoch training loop executed on GPU, best model saved to `checkpoints/best_turtle_resnet.pth`.
     *   OpenCV `cv::OutOfMemoryError` fixed during evaluation loop by moving Resize step earlier and optimizing memory allocations in `filters.py`.
-
----
-
-## ✅ Completed Phases
 
 ### Phase 1: Architecture Planning & Data Pipeline
 **Status:** Completed
