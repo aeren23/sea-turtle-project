@@ -378,15 +378,205 @@ equirements.txt) into it.
 * **Issues & Resolutions:** None
 
 ---
-### [2026-05-04 23:09:00] � Cascade / AI Coding Assistant
-* **Action/Task:** Phase 2.5 � FAISS Gallery Build Executed & Unicode Path Bug Fixed.
+### [2026-05-04 23:09:00] � Cascade / AI Coding Assistant
+* **Action/Task:** Phase 2.5 � FAISS Gallery Build Executed & Unicode Path Bug Fixed.
 * **Files Affected:** src/identification/vector_store.py, gallery_index/faiss_left.bin, gallery_index/faiss_right.bin, gallery_index/faiss_top.bin, gallery_index/meta_left.json, gallery_index/meta_right.json, gallery_index/meta_top.json
 * **Details/Decisions:**
-  - **Bug Fixed:** aiss.write_index() C++ fopen() failed on Windows paths containing non-ASCII characters (Masa�st�/�). Fixed by replacing with aiss.serialize_index() + Python open( wb) so Python handles all file I/O. Same pattern applied to load() with aiss.deserialize_index().
+  - **Bug Fixed:** aiss.write_index() C++ fopen() failed on Windows paths containing non-ASCII characters (Masa�st�/�). Fixed by replacing with aiss.serialize_index() + Python open( wb) so Python handles all file I/O. Same pattern applied to load() with aiss.deserialize_index().
   - **Gallery Build Result (8526 images, 0 skipped):**
     - Left index  : 3906 vectors
     - Right index : 3634 vectors
     - Top index   :  986 vectors
     - Total       : 8526 vectors
   - All 6 gallery files written to gallery_index/ directory.
-* **Issues & Resolutions:** faiss.write_index() Unicode path failure � resolved by using serialize/deserialize pattern with Python file handles.
+* **Issues & Resolutions:** faiss.write_index() Unicode path failure � resolved by using serialize/deserialize pattern with Python file handles.
+
+---
+### [2026-05-04 23:22:00] � Cascade / AI Coding Assistant
+* **Action/Task:** Gallery Demo Tests Executed � Known & Unknown Turtle Identification.
+* **Files Affected:** scripts/test_gallery_demo.py
+* **Details/Decisions:**
+  - Two functional tests run against the live FAISS gallery to validate end-to-end identification behavior.
+  - **Root Cause Discovered & Fixed:** First run showed 0.44 similarity for a known turtle because box=None was passed (full image vs. gallery's cropped-head embedding). Fixed by retrieving the original DTO bbox from the dataset parser and passing it to the identifier.
+
+  **Test 1 � Known Turtle (Left Side, Correct BBox):**
+  | Metric        | Value                        |
+  |---------------|------------------------------|
+  | Query Image   | gaFqXwEetd.jpeg (t522, left) |
+  | BBox Used     | [771.0, 597.0, 229.0, 166.0] |
+  | Best Score    | 1.000000                     |
+  | Best Match ID | t522 (Correct)               |
+  | Top-5         | All t522 (scores 0.97�1.0)   |
+  | Result        | MATCH FOUND � YES            |
+
+  **Test 2 � Unknown Individual (Gaussian Noise):**
+  | Metric        | Value                        |
+  |---------------|------------------------------|
+  | Query Image   | Synthetic Gaussian noise     |
+  | Best Score    | 0.500139 (< threshold 0.6)   |
+  | Result        | UNKNOWN INDIVIDUAL - correct |
+
+* **Issues & Resolutions:** bbox=None caused low similarity (0.44) for known turtle on first run � resolved by passing original annotation bbox to identifier.
+
+---
+### [2026-05-04 23:45:00] � Cascade / AI Coding Assistant
+* **Action/Task:** Created Agent Context Document.
+* **Files Affected:** docs/specifications/context.md
+* **Details/Decisions:**
+  - Created a comprehensive agent briefing document at docs/specifications/context.md.
+  - Covers: project purpose, full monorepo directory structure, end-to-end data flow diagram, 6 critical design rules (no horizontal flip, separate FAISS indexes, bbox requirement, manual side param, L2 norm guarantee, virtual identity format), key configuration constants, orientation-to-side mapping table, model details & training results, gallery statistics, common commands, known limitations & future work, coding standards summary.
+  - Intended use: any AI agent reads context.md first, then state.md � full project context without prior conversation history.
+* **Issues & Resolutions:** None
+
+
+---
+### [2026-05-05 00:28:04] — Antigravity / CLI Execution
+* **Action/Task:** Research crew started with user request: Hello CrewAI Team (DL Strategist, CV Researcher, and Marine Biologist). You cannot read external files, so please read this comprehensive summary of our current project state and then solve the architectural problem presented at the end. 1. Project Summary: We are building an automated non-invasive biometric ID system for sea turtles using post-ocular scale patterns. - Current State: Phase 2.5 (Identification Pipeline) is complete. We use a ResNet-50 backbone trained with ArcFace loss. Our Top-1 Accuracy is currently 49.69%. - Biological Rule (Critical): Sea turtle faces are strongly asymmetrical. Left and Right profiles are completely different. Therefore, "Horizontal Flips" are strictly banned. - Virtual Identity Architecture: To solve the asymmetry issue, we treat the left and right sides of the same turtle as two completely separate identities. - Vector Database: We extract 512-d L2-normalized embeddings. To prevent cross-side matching errors, we have built 3 entirely separate FAISS Index databases: faiss_left.bin, faiss_right.bin, and faiss_top.bin. 2. The Current Limitation: Our identification script (identifier.py) works perfectly, but it is manual. When querying a turtle, the user must manually input the bounding box coordinates (bbox) of the head and manually specify the --side (left, right, or top). 3. THE ARCHITECTURAL PROBLEM & YOUR TASK: We are moving to Phase 3: "Production Inference Pipeline". We need the system to be fully autonomous. A user will upload a raw, uncropped, random sea turtle photo, and the system must handle it end-to-end. To achieve this, we need to build two new lightweight AI modules before moving to API development: Module A (Head Detection): Needs to find the turtle's head in the raw photo and crop it (e.g., using YOLO). Module B (Orientation Classifier): Needs to look at the cropped head and classify it as "left", "right", or "top" so we know which FAISS index to query (e.g., using a lightweight CNN). Your Assignment: Please discuss this as a team and provide a clear, step-by-step Architectural Roadmap answering the following: 1. Dependency & Ordering: Which model must be developed first (Module A or Module B)? Why? 2. Algorithm Selection: What specific lightweight architectures do you recommend for Module A and Module B considering they will run in a production inference pipeline? 3. Integration Strategy: How should these two new modules be integrated into our existing SOLID codebase (which currently relies on manual bbox and --side inputs)?
+* **Files Affected:** agents/research_crew/
+* **Details/Decisions:** Research crew started with user request: Hello CrewAI Team (DL Strategist, CV Researcher, and Marine Biologist). You cannot read external files, so please read this comprehensive summary of our current project state and then solve the architectural problem presented at the end. 1. Project Summary: We are building an automated non-invasive biometric ID system for sea turtles using post-ocular scale patterns. - Current State: Phase 2.5 (Identification Pipeline) is complete. We use a ResNet-50 backbone trained with ArcFace loss. Our Top-1 Accuracy is currently 49.69%. - Biological Rule (Critical): Sea turtle faces are strongly asymmetrical. Left and Right profiles are completely different. Therefore, "Horizontal Flips" are strictly banned. - Virtual Identity Architecture: To solve the asymmetry issue, we treat the left and right sides of the same turtle as two completely separate identities. - Vector Database: We extract 512-d L2-normalized embeddings. To prevent cross-side matching errors, we have built 3 entirely separate FAISS Index databases: faiss_left.bin, faiss_right.bin, and faiss_top.bin. 2. The Current Limitation: Our identification script (identifier.py) works perfectly, but it is manual. When querying a turtle, the user must manually input the bounding box coordinates (bbox) of the head and manually specify the --side (left, right, or top). 3. THE ARCHITECTURAL PROBLEM & YOUR TASK: We are moving to Phase 3: "Production Inference Pipeline". We need the system to be fully autonomous. A user will upload a raw, uncropped, random sea turtle photo, and the system must handle it end-to-end. To achieve this, we need to build two new lightweight AI modules before moving to API development: Module A (Head Detection): Needs to find the turtle's head in the raw photo and crop it (e.g., using YOLO). Module B (Orientation Classifier): Needs to look at the cropped head and classify it as "left", "right", or "top" so we know which FAISS index to query (e.g., using a lightweight CNN). Your Assignment: Please discuss this as a team and provide a clear, step-by-step Architectural Roadmap answering the following: 1. Dependency & Ordering: Which model must be developed first (Module A or Module B)? Why? 2. Algorithm Selection: What specific lightweight architectures do you recommend for Module A and Module B considering they will run in a production inference pipeline? 3. Integration Strategy: How should these two new modules be integrated into our existing SOLID codebase (which currently relies on manual bbox and --side inputs)?
+* **Issues & Resolutions:** None
+
+---
+### [2026-05-05 00:28:26] — Data Researcher
+* **Action/Task:** Task completed successfully. Output summary: ### Report on Dataset Considerations for Modules A (Head Detection) & B (Orientation Classifier)  
+
+#### **1. Dependency & Ordering**  
+- **Module A (Head Detection)** must be developed first since Module B requires cropped turtle head images for orientation classification. Ensuring high-quality head detection ensures that Module B receives consistent and valid input.  
+
+#### **2. Dataset Considerations**  
+
+##### **Head Detection Dataset (Module A):**  
+- **Requirements:** Varied underwater ima...
+* **Files Affected:** C:\Users\alihe\OneDrive\Masaüstü\sea-turtle-project\docs\research_outputs\data_researcher\data_researcher_report_20260505_002826.md
+* **Details/Decisions:** Task completed successfully. Output summary: ### Report on Dataset Considerations for Modules A (Head Detection) & B (Orientation Classifier)  
+
+#### **1. Dependency & Ordering**  
+- **Module A (Head Detection)** must be developed first since Module B requires cropped turtle head images for orientation classification. Ensuring high-quality head detection ensures that Module B receives consistent and valid input.  
+
+#### **2. Dataset Considerations**  
+
+##### **Head Detection Dataset (Module A):**  
+- **Requirements:** Varied underwater ima...
+* **Issues & Resolutions:** None
+
+---
+### [2026-05-05 00:28:32] — CV Researcher
+* **Action/Task:** Task completed successfully. Output summary: ### Report on Architectural Roadmap  
+
+#### **1. Dependency & Ordering**  
+- **Module A (Head Detection)** must be developed first because the outputs (accurately cropped turtle heads) are essential inputs for **Module B (Orientation Classifier)**. Module B’s accuracy depends on the consistent input quality from Module A.  
+
+#### **2. Algorithm Selection**  
+
+##### **For Module A (Head Detection):**  
+- **Architecture Recommendation:** YOLO-based models such as YOLOv5n (nano version) or YOLOv8n....
+* **Files Affected:** C:\Users\alihe\OneDrive\Masaüstü\sea-turtle-project\docs\research_outputs\cv_researcher\cv_researcher_report_20260505_002832.md
+* **Details/Decisions:** Task completed successfully. Output summary: ### Report on Architectural Roadmap  
+
+#### **1. Dependency & Ordering**  
+- **Module A (Head Detection)** must be developed first because the outputs (accurately cropped turtle heads) are essential inputs for **Module B (Orientation Classifier)**. Module B’s accuracy depends on the consistent input quality from Module A.  
+
+#### **2. Algorithm Selection**  
+
+##### **For Module A (Head Detection):**  
+- **Architecture Recommendation:** YOLO-based models such as YOLOv5n (nano version) or YOLOv8n....
+* **Issues & Resolutions:** None
+
+---
+### [2026-05-05 00:28:40] — DL Strategist
+* **Action/Task:** Task completed successfully. Output summary: ### Detailed Architectural Roadmap and Training Strategy for Sea Turtle Identification System  
+
+#### **1. Dependency & Ordering**  
+- **Priority:** Develop **Module A (Head Detection)** first because its output (precisely cropped turtle heads from raw images) is a prerequisite for the accurate operation of **Module B (Orientation Classifier)**. Poor head detection directly compromises Module B's classification accuracy.
+
+---
+
+#### **2. Algorithm & Training Recommendations**
+
+**Module A: Head De...
+* **Files Affected:** C:\Users\alihe\OneDrive\Masaüstü\sea-turtle-project\docs\research_outputs\dl_strategist\dl_strategist_report_20260505_002840.md
+* **Details/Decisions:** Task completed successfully. Output summary: ### Detailed Architectural Roadmap and Training Strategy for Sea Turtle Identification System  
+
+#### **1. Dependency & Ordering**  
+- **Priority:** Develop **Module A (Head Detection)** first because its output (precisely cropped turtle heads from raw images) is a prerequisite for the accurate operation of **Module B (Orientation Classifier)**. Poor head detection directly compromises Module B's classification accuracy.
+
+---
+
+#### **2. Algorithm & Training Recommendations**
+
+**Module A: Head De...
+* **Issues & Resolutions:** None
+
+---
+### [2026-05-05 00:28:46] — Marine Biologist
+* **Action/Task:** Task completed successfully. Output summary: ### Report on Biological Feasibility and Dataset Limitations for Sea Turtle Photo-ID System  
+
+#### Biological Considerations
+
+**Post-Ocular Scale Patterns**  
+Sea turtle facial scale patterns, specifically post-ocular scales, are biologically valid identifiers due to their uniqueness across individuals, akin to human fingerprints. The asymmetry between left and right profiles is essential for identification accuracy, as mirrored scales are not identical. Horizontal flipping would corrupt traini...
+* **Files Affected:** C:\Users\alihe\OneDrive\Masaüstü\sea-turtle-project\docs\research_outputs\biologist\marine_biologist_report_20260505_002846.md
+* **Details/Decisions:** Task completed successfully. Output summary: ### Report on Biological Feasibility and Dataset Limitations for Sea Turtle Photo-ID System  
+
+#### Biological Considerations
+
+**Post-Ocular Scale Patterns**  
+Sea turtle facial scale patterns, specifically post-ocular scales, are biologically valid identifiers due to their uniqueness across individuals, akin to human fingerprints. The asymmetry between left and right profiles is essential for identification accuracy, as mirrored scales are not identical. Horizontal flipping would corrupt traini...
+* **Issues & Resolutions:** None
+
+---
+### [2026-05-05 00:29:03] — Research Orchestrator
+* **Action/Task:** Task completed successfully. Output summary: ### Comprehensive Final Strategic Decision Document for Building the Sea Turtle Identification System
+
+#### **1. Dependency & Ordering**
+The development of **Module A (Head Detection)** is the first and essential step before working on **Module B (Orientation Classifier)**. The reasoning is straightforward:
+- **Module A** automatically crops the turtle’s head from a raw, unstructured image.
+- **Module B** depends on high-quality, consistent inputs (i.e., cropped images from **Module A**) to clas...
+* **Files Affected:** C:\Users\alihe\OneDrive\Masaüstü\sea-turtle-project\docs\research_outputs\orchestrator\research_orchestrator_report_20260505_002903.md
+* **Details/Decisions:** Task completed successfully. Output summary: ### Comprehensive Final Strategic Decision Document for Building the Sea Turtle Identification System
+
+#### **1. Dependency & Ordering**
+The development of **Module A (Head Detection)** is the first and essential step before working on **Module B (Orientation Classifier)**. The reasoning is straightforward:
+- **Module A** automatically crops the turtle’s head from a raw, unstructured image.
+- **Module B** depends on high-quality, consistent inputs (i.e., cropped images from **Module A**) to clas...
+* **Issues & Resolutions:** None
+
+---
+### [2026-05-05 00:29:03] — Antigravity / CLI Execution
+* **Action/Task:** Research crew completed all tasks successfully. Final decision saved to final_decision_20260505_002903.md
+* **Files Affected:** C:\Users\alihe\OneDrive\Masaüstü\sea-turtle-project\docs\research_outputs\orchestrator\final_decision_20260505_002903.md
+* **Details/Decisions:** Research crew completed all tasks successfully. Final decision saved to final_decision_20260505_002903.md
+* **Issues & Resolutions:** None
+
+---
+### [2026-05-05 00:35:00] — Opencode / AI Architect
+* **Action/Task:** Proposed Architectural Roadmap for Phase 3 Fully Autonomous Inference Pipeline.
+* **Files Affected:** `docs/project_log.md`
+* **Details/Decisions:** Tam otonom bir "Production Inference Pipeline" (Canlı Çıkarım Boru Hattı) kurmak için iki ana modülün mimarisi tasarlandı:
+  1. **Kafa Tespiti (Head Detection):** Mevcut `annotations.json` dosyasındaki binlerce kesin kafa koordinatı kullanılarak çok hızlı ve hafif bir obje tespit modeli (örneğin YOLOv8-Nano veya YOLOv11n) eğitilecek. Bu modülün görevi, sisteme yüklenen ham fotoğraftaki kafayı bulup koordinatlarını (bbox) çıkarmak olacak.
+  2. **Yön Sınıflandırıcı (Orientation Classifier):** Kırpılan kafa görüntüsünü analiz edip "Sol", "Sağ" veya "Üst" olarak sınıflandıracak çok basit ve hafif bir CNN modeli (MobileNet veya custom bir ağ) eğitilecek. Bu sayede sistem, manuel "--side" girdisine ihtiyaç duymadan hangi FAISS index'inde arama yapacağını kendi kendine tespit edebilecek.
+* **Issues & Resolutions:** None
+
+---
+### [2026-05-05 00:41:00] — Cascade / AI Coding Assistant
+* **Action/Task:** Implemented Phase 2.6 — Production Inference Pipeline (code scaffolding, no model training yet).
+* **Files Affected:**
+  - `ai-core/src/config/data_config.py` (added YOLO configuration constants)
+  - `ai-core/src/inference/__init__.py` (new module)
+  - `ai-core/src/inference/head_detector.py` (new — HeadDetector class wrapping YOLOv8n)
+  - `ai-core/src/inference/inference_pipeline.py` (new — TurtleInferencePipeline orchestrator)
+  - `ai-core/scripts/prepare_yolo_dataset.py` (new — COCO→YOLO format converter)
+  - `ai-core/scripts/train_yolo_detector.py` (new — YOLOv8n training script)
+  - `ai-core/scripts/infer_turtle.py` (new — autonomous inference CLI)
+  - `ai-core/tests/test_head_detector.py` (new — 5 unit tests)
+  - `ai-core/tests/test_inference_pipeline.py` (new — 6 unit tests)
+  - `ai-core/requirements.txt` (added `ultralytics>=8.0.0`)
+  - `.gitignore` (added `runs/` for YOLO training output)
+  - `docs/specifications/state.md` (Phase 2.6 added as current phase)
+  - `docs/specifications/context.md` (updated monorepo structure, data flow diagrams, design rules, limitations table, YOLO details section)
+* **Details/Decisions:**
+  - **Architectural Decision:** Chose single YOLOv8-Nano with 3 classes (`head_left`, `head_right`, `head_top`) instead of two separate models (YOLO detector + CNN classifier). This reduces complexity, latency, and error surface while solving both head detection and orientation classification in one forward pass.
+  - **Module Placement:** Created `src/inference/` as a new module separate from `src/identification/` (SRP — identification handles gallery/search, inference handles raw-photo-to-result orchestration).
+  - **YOLO Dataset Preparation:** Script converts COCO annotations to YOLO format using the same orientation→side mapping as `SeaTurtleDatasetParser._map_orientation_to_side()`.
+  - **Dependency Injection:** All pipeline components are injectable via constructor parameters, following DIP.
+* **Issues & Resolutions:** None — code scaffolding complete, awaiting YOLO dataset preparation and model training execution.

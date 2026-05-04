@@ -37,3 +37,6 @@ checkpoints/
 
 # FAISS Gallery Indexes
 gallery_index/
+
+# YOLO Training Runs
+runs/

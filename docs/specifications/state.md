@@ -4,7 +4,28 @@
 
 This document tracks the high-level progress, completed milestones, and current active phase of the SeaTurtle Photo-ID project. It is intended to provide immediate context to any AI Agent joining the workspace.
 
-## 🟢 Current Phase: Phase 2.5 - Embedding Gallery & FAISS Vector Store
+## 🟢 Current Phase: Phase 2.6 - Production Inference Pipeline
+**Status:** In Progress
+
+Building a fully autonomous inference pipeline that takes a raw turtle photograph and returns an identification result without any manual parameters (no `--bbox`, no `--side`).
+*   **Focus:** Automatic head detection + orientation classification via YOLOv8n, end-to-end inference orchestration.
+*   **Architecture:** Single YOLOv8-Nano model with 3 classes (`head_left`, `head_right`, `head_top`) performs both head detection and orientation classification in one forward pass.
+*   **Completed Tasks:**
+    *   `prepare_yolo_dataset.py`: Converts COCO annotations.json → YOLO format with 3 classes, using existing orientation→side mapping and metadata_splits.csv for train/val split.
+    *   `train_yolo_detector.py`: YOLOv8n training script with configurable epochs/batch, auto-copies best weights to `checkpoints/yolo_head_detector.pt`.
+    *   `HeadDetector` (`src/inference/head_detector.py`): YOLO model wrapper — detects head bbox + biological side + confidence from raw image.
+    *   `TurtleInferencePipeline` (`src/inference/inference_pipeline.py`): Orchestrates full flow: YOLO → preprocessing → embedding → FAISS search → `IdentificationResult`.
+    *   `infer_turtle.py`: CLI script — `python scripts/infer_turtle.py --image foto.jpg` (zero manual params).
+    *   Config updated: `YOLO_CHECKPOINT_PATH`, `YOLO_DATASET_DIR`, `YOLO_CLASS_NAMES`, `YOLO_CLASS_TO_SIDE`, `YOLO_CONFIDENCE_THRESHOLD`, `YOLO_IMAGE_SIZE` added to `data_config.py`.
+    *   `ultralytics>=8.0.0` added to `requirements.txt`.
+    *   **10 unit tests** covering: HeadDetection DTO, detector init/edge cases, full pipeline orchestration (known/unknown/error/empty-index scenarios).
+*   **Pending:** YOLO model training execution (requires `prepare_yolo_dataset.py` → `train_yolo_detector.py` run).
+
+---
+
+## ✅ Completed Phases
+
+### Phase 2.5: Embedding Gallery & FAISS Vector Store
 **Status:** Completed
 
 Built the full identification pipeline that converts all preprocessed turtle images into 512-d embeddings and stores them in a FAISS-based vector database for nearest-neighbour identity matching.
@@ -17,10 +38,6 @@ Built the full identification pipeline that converts all preprocessed turtle ima
     *   CLI scripts: `scripts/build_gallery.py` (builds 3 FAISS indexes) and `scripts/identify_turtle.py` (query with `--image` + `--side`).
     *   Config updated: `EMBEDDING_DIM`, `FAISS_INDEX_DIR`, `BIOLOGICAL_SIDES`, `IDENTIFICATION_THRESHOLD`, `TOP_K_RESULTS`, `CHECKPOINT_PATH` added to `data_config.py`.
     *   **18 unit/integration tests** all passing: vector store CRUD, L2 norm guarantee, cross-side isolation, persistence, identification pipeline.
-
----
-
-## ✅ Completed Phases
 
 ### Phase 2: Deep Learning Implementation
 **Status:** Completed
@@ -49,9 +66,9 @@ The PyTorch training pipeline for the CNN is fully built and recently refactored
 ## ⏳ Upcoming Phases
 
 ### Phase 3: Web Platform & Backend Integration (Clean Architecture)
-*   **Tech Stack:** .NET 8 RESTful API.
+*   **Tech Stack:** .NET 8 RESTful API + FastAPI Python microservice.
 *   **Goal:** Build the web service where users/researchers can upload photos, register new turtles, or query existing ones.
-*   **Integration:** The PyTorch model will be integrated either via ONNX runtime within .NET, or as a standalone Python microservice (FastAPI/Flask) that the .NET backend communicates with.
+*   **Integration:** The TurtleInferencePipeline will be exposed via FastAPI as a standalone microservice that the .NET backend communicates with.
 
 ### Phase 4: Frontend Development
 *   **Goal:** A visually stunning, dynamic UI for DEKAMER researchers to interact with the system.

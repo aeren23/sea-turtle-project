@@ -49,3 +49,25 @@ IDENTIFICATION_THRESHOLD = 0.6
 
 # Number of top-K results returned during identification search
 TOP_K_RESULTS = 5
+
+# ---------------------------------------------------------------------------
+# YOLO Head Detector Configuration
+# ---------------------------------------------------------------------------
+
+# YOLO class names — maps class index to biological side
+YOLO_CLASS_NAMES = {0: "head_left", 1: "head_right", 2: "head_top"}
+
+# Reverse mapping: YOLO class name → biological side for FAISS index routing
+YOLO_CLASS_TO_SIDE = {"head_left": "left", "head_right": "right", "head_top": "top"}
+
+# Trained YOLO checkpoint path
+YOLO_CHECKPOINT_PATH = PROJECT_ROOT / "checkpoints" / "yolo_head_detector.pt"
+
+# YOLO dataset directory (prepared from annotations.json)
+YOLO_DATASET_DIR = PROJECT_ROOT / "datasets" / "yolo_head"
+
+# YOLO inference confidence threshold
+YOLO_CONFIDENCE_THRESHOLD = 0.25
+
+# YOLO input image size (square)
+YOLO_IMAGE_SIZE = 640

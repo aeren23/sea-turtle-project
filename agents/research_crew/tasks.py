@@ -73,7 +73,8 @@ def create_tasks(agents: dict[str, Agent]) -> list[Task]:
         description=(
             "Analyze the dataset implications of the following user request:\n\n"
             "User Request: {user_request}\n\n"
-            "Focus purely on dataset constraints, augmentation needs, and image quality."
+            "Focus purely on dataset constraints, augmentation needs, and image quality.\n"
+            "IMPORTANT: Keep your report EXTREMELY concise (under 300 words)."
         ),
         expected_output="A brief report on dataset considerations.",
         agent=agents["data_researcher"],
@@ -84,7 +85,8 @@ def create_tasks(agents: dict[str, Agent]) -> list[Task]:
         description=(
             "Analyze the computer vision preprocessing implications of the following user request:\n\n"
             "User Request: {user_request}\n\n"
-            "Focus purely on image normalization, alignment, and filtering."
+            "Focus purely on image normalization, alignment, and filtering.\n"
+            "IMPORTANT: Keep your report EXTREMELY concise (under 300 words)."
         ),
         expected_output="A brief report on CV preprocessing considerations.",
         agent=agents["cv_researcher"],
@@ -95,7 +97,8 @@ def create_tasks(agents: dict[str, Agent]) -> list[Task]:
         description=(
             "Analyze the deep learning architecture and training metrics based on the following user request:\n\n"
             "User Request: {user_request}\n\n"
-            "Focus purely on model metrics (Loss, Accuracy, mAP) and training strategies (Epochs, Overfitting)."
+            "Focus purely on model metrics (Loss, Accuracy, mAP) and training strategies (Epochs, Overfitting).\n"
+            "IMPORTANT: Keep your report EXTREMELY concise (under 300 words)."
         ),
         expected_output="A detailed report analyzing the model's metrics and training strategy.",
         agent=agents["dl_strategist"],
@@ -106,7 +109,8 @@ def create_tasks(agents: dict[str, Agent]) -> list[Task]:
         description=(
             "Analyze the biological feasibility of the following user request:\n\n"
             "User Request: {user_request}\n\n"
-            "Focus purely on sea turtle anatomy, post-ocular scale patterns, and the biological impact of Few-Shot data."
+            "Focus purely on sea turtle anatomy, post-ocular scale patterns, and the biological impact of Few-Shot data.\n"
+            "IMPORTANT: Keep your report EXTREMELY concise (under 300 words)."
         ),
         expected_output="A detailed biological analysis of the scale patterns and dataset limitations.",
         agent=agents["biologist"],

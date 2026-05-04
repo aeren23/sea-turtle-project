@@ -14,7 +14,7 @@ from crewai import LLM
 # LLM Configuration Constants
 # ---------------------------------------------------------------------------
 GITHUB_MODELS_BASE_URL = "https://models.inference.ai.azure.com"
-DEFAULT_MODEL_NAME = "openai/gpt-4o-mini"
+DEFAULT_MODEL_NAME = "openai/gpt-4o"
 
 # ---------------------------------------------------------------------------
 # Project Paths

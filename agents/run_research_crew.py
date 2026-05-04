@@ -59,7 +59,9 @@ def main() -> None:
     print("\n📋 The Orchestrator will decide which agents to activate")
     print("   based on your request.\n")
 
-    user_request = input("🐢 Orchestrator'a görevinizi yazın: ").strip()
+    user_request = os.environ.get("MOCK_USER_REQUEST")
+    if not user_request:
+        user_request = input("🐢 Orchestrator'a görevinizi yazın: ").strip()
 
     if not user_request:
         print("❌ Empty request. Exiting.")
