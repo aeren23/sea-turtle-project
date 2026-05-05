@@ -40,3 +40,6 @@ gallery_index/
 
 # YOLO Training Runs
 runs/
+
+# Photo staging (temporary files awaiting registration)
+_staging/

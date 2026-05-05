@@ -11,23 +11,29 @@ Exposed `TurtleInferencePipeline` as a standalone FastAPI microservice with REST
 *   **Focus:** REST API wrapper around the AI pipeline + 2-phase registration flow for unknown turtles.
 *   **Architecture:** Standalone `ai-service/` module, imports `src.*` from `ai-core/` via `sys.path`. Pipeline loaded as singleton at startup.
 *   **Endpoints:**
-    *   `POST /api/v1/identify` — Upload photo → YOLO + ResNet + FAISS → identification result. Returns `session_id` for unknown turtles.
-    *   `POST /api/v1/register` — Confirm registration of unknown turtle using `session_id`. Auto-generates `tNNN` ID, adds embedding to FAISS, saves to disk.
+    *   `POST /api/v1/identify` — Upload photo → YOLO + ResNet + FAISS → identification result. Returns `session_id` for unknown turtles. Saves photos permanently.
+    *   `POST /api/v1/register` — Confirm registration of unknown turtle using `session_id`. Auto-generates `tNNN` ID, moves photo from staging, adds embedding to FAISS with real path.
     *   `GET /health` — Service health check.
 *   **Completed Tasks:**
-    *   `ai-service/schemas.py`: Pydantic models — `DetectionResponse`, `IdentificationResponse`, `IdentifyResponse`, `RegisterRequest`, `RegisterResponse`, `HealthResponse`.
-    *   `ai-service/main.py`: FastAPI app with `lifespan` startup, session management, file validation.
-    *   `ai-service/session_store.py`: In-memory session cache with 10-min TTL for pending registrations.
+    *   `ai-service/schemas.py`: Pydantic models — `DetectionResponse`, `IdentificationResponse`, `IdentifyResponse` (with `saved_photo_path`, `gallery_updated`), `RegisterRequest`, `RegisterResponse`, `HealthResponse`.
+    *   `ai-service/main.py`: FastAPI app with `lifespan` startup, session management, file validation, photo storage integration.
+    *   `ai-service/session_store.py`: In-memory session cache with 10-min TTL. Tracks `staged_photo_path`. Auto-deletes expired staging photos on cleanup.
+    *   `ai-service/photo_storage.py`: **[NEW]** `PhotoStorageService` — manages persistent photo storage in `images/tXXX/` (consistent with dataset structure), staging area for unknown turtles, expired staging cleanup.
     *   `ai-service/id_generator.py`: Auto turtle ID generator — scans FAISS metadata for max `tNNN`, returns `t(NNN+1)`.
     *   `ai-service/requirements.txt`: fastapi, uvicorn[standard], python-multipart.
     *   `ai-service/README.md`: Quick start, endpoint docs, registration flow, architecture diagram.
     *   `ai-core/src/inference/inference_pipeline.py`: Added `embedding` field to `InferenceResult` for registration caching.
+    *   `ai-core/src/config/data_config.py`: Added `AUTO_ADD_GALLERY_THRESHOLD` (0.9), `PHOTO_STAGING_DIR`, `STAGING_TTL_SECONDS`.
+*   **Photo Storage Strategy (v2):**
+    *   **Known turtle (score ≥ 0.6):** Photo saved to `images/tXXX/` permanently. If score ≥ 0.9, embedding auto-added to FAISS gallery.
+    *   **Unknown turtle:** Photo saved to `images/_staging/`, cached in session. On register → moved to `images/tNNN/`, embedding added to FAISS.
+    *   **Staging cleanup:** Expired staging photos deleted with session TTL (10 min).
 *   **Test Results:**
     *   Health check: `{"status": "ok", "pipeline_loaded": true}`
     *   `POST /api/v1/identify` with t001 photo → `is_known: true`, `turtle_id: "t001"`, `best_score: 0.986`
     *   `POST /api/v1/register` with invalid session → correctly returns 404
     *   Swagger UI auto-generated at `/docs`
-    *   8/8 ai-core unit tests still passing
+    *   36/36 ai-core unit tests passing (photo storage changes did not break any tests)
 
 ---
 

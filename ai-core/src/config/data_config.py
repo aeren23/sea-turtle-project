@@ -47,8 +47,18 @@ BIOLOGICAL_SIDES = ("left", "right", "top")
 # Cosine similarity threshold below which a match is considered "Unknown Individual"
 IDENTIFICATION_THRESHOLD = 0.6
 
+# Auto-add threshold: known turtle photos with score >= this value are
+# automatically added to the FAISS gallery. Below this, user confirmation is needed.
+AUTO_ADD_GALLERY_THRESHOLD = 0.9
+
 # Number of top-K results returned during identification search
 TOP_K_RESULTS = 5
+
+# Staging directory for photos of unidentified turtles awaiting registration
+PHOTO_STAGING_DIR = IMAGES_DIR / "_staging"
+
+# Staging file TTL — must match SessionStore TTL
+STAGING_TTL_SECONDS = 600
 
 # ---------------------------------------------------------------------------
 # YOLO Head Detector Configuration

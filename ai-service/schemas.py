@@ -67,6 +67,22 @@ class IdentifyResponse(BaseModel):
             "Use this with POST /api/v1/register to confirm registration."
         ),
     )
+    saved_photo_path: str | None = Field(
+        None,
+        description=(
+            "Absolute path where the uploaded photo was permanently saved. "
+            "Set for known turtles (images/tXXX/). None for unknown turtles "
+            "until registration is confirmed."
+        ),
+    )
+    gallery_updated: bool = Field(
+        False,
+        description=(
+            "Whether the new photo's embedding was auto-added to the "
+            "FAISS gallery. True only when a known turtle's confidence "
+            "score exceeds the auto-add threshold (0.9)."
+        ),
+    )
     error: str | None = Field(
         None, description="Error message if any stage failed"
     )

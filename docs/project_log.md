@@ -674,3 +674,30 @@ The development of **Module A (Head Detection)** is the first and essential step
   - register with invalid session → 404 ✓
   - 8/8 ai-core unit tests passing ✓
 * **Issues & Resolutions:** None.
+
+---
+
+### Log Entry — 2026-05-05 19:30
+
+* **Phase:** 3.0 — ai-service Photo Storage Fix
+* **Action:** Fixed critical photo persistence gap — photos are now permanently saved to dataset directory structure.
+* **Files Created:**
+  - `ai-service/photo_storage.py` (PhotoStorageService — manages save_to_turtle, save_to_staging, move_from_staging, cleanup_expired_staging)
+* **Files Modified:**
+  - `ai-service/main.py` (integrated PhotoStorageService into identify + register endpoints)
+  - `ai-service/session_store.py` (added staged_photo_path/original_filename to PendingRegistration, auto-deletes expired staging photos)
+  - `ai-service/schemas.py` (added saved_photo_path + gallery_updated fields to IdentifyResponse)
+  - `ai-core/src/config/data_config.py` (added AUTO_ADD_GALLERY_THRESHOLD=0.9, PHOTO_STAGING_DIR, STAGING_TTL_SECONDS)
+  - `.gitignore` (added _staging/)
+  - `docs/specifications/state.md` (updated Phase 3.0 with photo storage details)
+* **Details/Decisions:**
+  - **Problem:** Photos were written to tempfile during identify and deleted after inference. Register wrote `image_path="registered_via_api"` — no real file path, no photo saved.
+  - **Solution:** ai-service now manages photo storage directly, consistent with the ai-core dataset structure (images/tXXX/).
+  - **Known turtle flow:** Photo saved to `images/tXXX/`. If score ≥ 0.9 (AUTO_ADD_GALLERY_THRESHOLD), embedding also auto-added to FAISS gallery.
+  - **Unknown turtle flow:** Photo saved to `images/_staging/`. On register → moved to `images/tNNN/`, FAISS metadata gets real file path.
+  - **Staging cleanup:** Expired staging photos auto-deleted when sessions expire (10 min TTL).
+  - **File naming:** `{YYYYMMDD_HHMMSS}_{uuid6}.{ext}` to prevent collisions.
+* **Test Results:**
+  - 36/36 ai-core unit tests passing ✓ (no breakage from config additions)
+  - Pre-existing test_training_components.py has unrelated import error (stale get_triplet_loss_and_miner reference from ArcFace migration)
+* **Issues & Resolutions:** None.

@@ -27,10 +27,12 @@ from fastapi.middleware.cors import CORSMiddleware
 AI_CORE_DIR = Path(__file__).resolve().parent.parent / "ai-core"
 sys.path.insert(0, str(AI_CORE_DIR))
 
+from src.config.data_config import AUTO_ADD_GALLERY_THRESHOLD, IMAGES_DIR  # noqa: E402
 from src.identification.vector_store import EmbeddingMetadata  # noqa: E402
 from src.inference.inference_pipeline import InferenceResult, TurtleInferencePipeline  # noqa: E402
 
 from id_generator import generate_next_turtle_id  # noqa: E402
+from photo_storage import PhotoStorageService  # noqa: E402
 from schemas import (  # noqa: E402
     DetectionResponse,
     HealthResponse,
@@ -54,11 +56,12 @@ MAX_FILE_SIZE_MB = 20
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Loads the inference pipeline on startup, cleans up on shutdown."""
+    """Loads the inference pipeline and photo storage on startup."""
     logger.info("Loading TurtleInferencePipeline (YOLO + ResNet + FAISS)...")
     app.state.pipeline = TurtleInferencePipeline()
     app.state.sessions = SessionStore()
-    logger.info("Pipeline loaded successfully.")
+    app.state.photo_storage = PhotoStorageService(images_dir=IMAGES_DIR)
+    logger.info("Pipeline and photo storage loaded successfully.")
     yield
     logger.info("Shutting down AI Service.")
 
@@ -163,7 +166,7 @@ async def identify_turtle(file: UploadFile = File(...)):
             detail=f"File too large. Maximum size: {MAX_FILE_SIZE_MB} MB.",
         )
 
-    # Save to temp file (pipeline.run expects a file path)
+    # Save to temp file — pipeline.run() expects a file path
     suffix = Path(file.filename).suffix if file.filename else ".jpg"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(contents)
@@ -174,19 +177,53 @@ async def identify_turtle(file: UploadFile = File(...)):
         result = pipeline.run(tmp_path)
         response = _map_result(result)
 
-        # If unknown, cache embedding for potential registration
-        if (
-            response.success
-            and response.identification
-            and not response.identification.is_known
-            and result.detection
-        ):
+        if not response.success or not response.identification or not result.detection:
+            return response
+
+        photo_storage: PhotoStorageService = app.state.photo_storage
+        original_filename = file.filename or f"upload{suffix}"
+
+        if response.identification.is_known:
+            # --- Known turtle: save photo permanently ---
+            turtle_id = response.identification.turtle_id
+            saved_path = photo_storage.save_to_turtle(
+                contents, turtle_id, original_filename
+            )
+            response.saved_photo_path = str(saved_path)
+
+            # Auto-add to FAISS gallery if confidence is high enough
+            if response.identification.best_score >= AUTO_ADD_GALLERY_THRESHOLD:
+                side = result.detection.biological_side
+                metadata = EmbeddingMetadata(
+                    turtle_id=turtle_id,
+                    image_path=str(saved_path),
+                    orientation=side,
+                    biological_side=side,
+                )
+                pipeline.vector_store.add_embedding(
+                    embedding=result.embedding,
+                    biological_side=side,
+                    metadata=metadata,
+                )
+                pipeline.vector_store.save()
+                response.gallery_updated = True
+                logger.info(
+                    "Auto-added embedding for %s (score=%.4f, side=%s).",
+                    turtle_id,
+                    response.identification.best_score,
+                    side,
+                )
+        else:
+            # --- Unknown turtle: stage photo for potential registration ---
+            staged_path = photo_storage.save_to_staging(contents, original_filename)
             sessions: SessionStore = app.state.sessions
             session_id = sessions.create(
                 embedding=result.embedding,
                 biological_side=result.detection.biological_side,
                 bbox=result.detection.bbox,
                 yolo_confidence=result.detection.confidence,
+                staged_photo_path=str(staged_path),
+                original_filename=original_filename,
             )
             response.session_id = session_id
             logger.info("Unknown turtle — session %s created.", session_id[:8])
@@ -196,6 +233,7 @@ async def identify_turtle(file: UploadFile = File(...)):
         logger.exception("Unexpected error during inference.")
         raise HTTPException(status_code=500, detail=str(exc))
     finally:
+        # Always clean up the temp file used for inference
         Path(tmp_path).unlink(missing_ok=True)
 
 
@@ -222,12 +260,19 @@ async def register_turtle(request: RegisterRequest):
     try:
         pipeline: TurtleInferencePipeline = app.state.pipeline
         vector_store = pipeline.vector_store
+        photo_storage: PhotoStorageService = app.state.photo_storage
 
         new_id = generate_next_turtle_id(vector_store)
 
+        # Move staged photo to permanent turtle directory
+        final_path = photo_storage.move_from_staging(
+            staged_photo_path=pending.staged_photo_path,
+            turtle_id=new_id,
+        )
+
         metadata = EmbeddingMetadata(
             turtle_id=new_id,
-            image_path="registered_via_api",
+            image_path=str(final_path),
             orientation=pending.biological_side,
             biological_side=pending.biological_side,
         )
@@ -242,16 +287,17 @@ async def register_turtle(request: RegisterRequest):
         sessions.remove(request.session_id)
 
         logger.info(
-            "Registered new turtle %s (side=%s).",
+            "Registered new turtle %s (side=%s, photo=%s).",
             new_id,
             pending.biological_side,
+            final_path.name,
         )
 
         return RegisterResponse(
             success=True,
             turtle_id=new_id,
             biological_side=pending.biological_side,
-            message=f"Turtle {new_id} registered successfully in faiss_{pending.biological_side} index.",
+            message=f"Turtle {new_id} registered successfully. Photo saved to images/{new_id}/.",
         )
     except Exception as exc:
         logger.exception("Registration failed.")
