@@ -580,3 +580,25 @@ The development of **Module A (Head Detection)** is the first and essential step
   - **YOLO Dataset Preparation:** Script converts COCO annotations to YOLO format using the same orientation→side mapping as `SeaTurtleDatasetParser._map_orientation_to_side()`.
   - **Dependency Injection:** All pipeline components are injectable via constructor parameters, following DIP.
 * **Issues & Resolutions:** None — code scaffolding complete, awaiting YOLO dataset preparation and model training execution.
+
+---
+
+### Log Entry — 2026-05-05 15:45
+
+* **Phase:** 2.6 — YOLO Head Detection Training Complete
+* **Action:** YOLO dataset prepared and model trained; training report written.
+* **Files Changed:**
+  - `ai-core/scripts/prepare_yolo_dataset.py` (refactored — no image copying, labels written to `archiveu/.../data/labels/`, train.txt/val.txt index files)
+  - `docs/reports/phase2_6_yolo_head_detection.md` (new — full training report with visuals)
+  - `docs/reports/assets/yolo_head_training/` (new — 8 training result images for report)
+  - `docs/specifications/state.md` (updated Phase 2.6 status with training results)
+* **Details/Decisions:**
+  - **Dataset Prep Refactor:** Removed `shutil.copy2()` image duplication. YOLO now reads original images via `train.txt`/`val.txt` absolute path lists. Labels written to `archiveu/.../data/labels/` (parallel to `images/`), which YOLO auto-discovers by path substitution.
+  - **Training Results (40 epochs, early stop at patience=10):** mAP50 = 0.761, mAP50-95 = 0.595, Precision = 0.655, Recall = 0.783. Best epoch: 30.
+  - **Head Detection:** Strong — 94–98% of heads found (only 2–6% missed as background).
+  - **Orientation Classification:** `head_top` 74% accurate. `head_left` ↔ `head_right` confusion at 31–42% due to annotation inconsistency in source `annotations.json`.
+  - **Root Cause Analysis:** Annotation convention mismatch identified — some annotators labeled by visual direction (turtle facing left = "left"), others by biological side (left cheek visible = "left"). This creates training noise but system remains internally consistent (gallery and YOLO use same mapping).
+  - **MVP Strategy Proposed:** Fallback search — when YOLO confidence is low or class is left/right, search all 3 FAISS indexes instead of just the predicted one.
+* **Issues & Resolutions:**
+  - **Issue:** `prepare_yolo_dataset.py` was copying all 8,526 images to `datasets/yolo_head/images/`, wasting disk space.
+  - **Resolution:** Refactored to write only label `.txt` files + index files. Zero image duplication.

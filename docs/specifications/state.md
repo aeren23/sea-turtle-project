@@ -5,21 +5,27 @@
 This document tracks the high-level progress, completed milestones, and current active phase of the SeaTurtle Photo-ID project. It is intended to provide immediate context to any AI Agent joining the workspace.
 
 ## 🟢 Current Phase: Phase 2.6 - Production Inference Pipeline
-**Status:** In Progress
+**Status:** Training Complete — MVP Evaluation
 
-Building a fully autonomous inference pipeline that takes a raw turtle photograph and returns an identification result without any manual parameters (no `--bbox`, no `--side`).
+Built a fully autonomous inference pipeline that takes a raw turtle photograph and returns an identification result without any manual parameters (no `--bbox`, no `--side`).
 *   **Focus:** Automatic head detection + orientation classification via YOLOv8n, end-to-end inference orchestration.
 *   **Architecture:** Single YOLOv8-Nano model with 3 classes (`head_left`, `head_right`, `head_top`) performs both head detection and orientation classification in one forward pass.
+*   **Training Results (40 epochs, early stop):**
+    *   **mAP50 = 0.761**, mAP50-95 = 0.595, Precision = 0.655, Recall = 0.783
+    *   Head detection is strong (94–98% detection rate).
+    *   `head_top` classification: 74% accurate.
+    *   `head_left` ↔ `head_right` confusion: 31–42% cross-misclassification due to annotation inconsistency in source data.
+    *   Full training report: `docs/reports/phase2_6_yolo_head_detection.md`
 *   **Completed Tasks:**
-    *   `prepare_yolo_dataset.py`: Converts COCO annotations.json → YOLO format with 3 classes, using existing orientation→side mapping and metadata_splits.csv for train/val split.
-    *   `train_yolo_detector.py`: YOLOv8n training script with configurable epochs/batch, auto-copies best weights to `checkpoints/yolo_head_detector.pt`.
-    *   `HeadDetector` (`src/inference/head_detector.py`): YOLO model wrapper — detects head bbox + biological side + confidence from raw image.
+    *   `prepare_yolo_dataset.py`: COCO → YOLO format, no image copying (labels written alongside originals).
+    *   `train_yolo_detector.py`: YOLOv8n training, best weights saved to `runs/detect/turtle_head_detector/weights/best.pt`.
+    *   `HeadDetector` (`src/inference/head_detector.py`): YOLO model wrapper — detects head bbox + biological side + confidence.
     *   `TurtleInferencePipeline` (`src/inference/inference_pipeline.py`): Orchestrates full flow: YOLO → preprocessing → embedding → FAISS search → `IdentificationResult`.
     *   `infer_turtle.py`: CLI script — `python scripts/infer_turtle.py --image foto.jpg` (zero manual params).
-    *   Config updated: `YOLO_CHECKPOINT_PATH`, `YOLO_DATASET_DIR`, `YOLO_CLASS_NAMES`, `YOLO_CLASS_TO_SIDE`, `YOLO_CONFIDENCE_THRESHOLD`, `YOLO_IMAGE_SIZE` added to `data_config.py`.
+    *   Config: `YOLO_CHECKPOINT_PATH`, `YOLO_DATASET_DIR`, `YOLO_CLASS_NAMES`, `YOLO_CLASS_TO_SIDE` added to `data_config.py`.
     *   `ultralytics>=8.0.0` added to `requirements.txt`.
-    *   **10 unit tests** covering: HeadDetection DTO, detector init/edge cases, full pipeline orchestration (known/unknown/error/empty-index scenarios).
-*   **Pending:** YOLO model training execution (requires `prepare_yolo_dataset.py` → `train_yolo_detector.py` run).
+    *   **10 unit tests** covering HeadDetection DTO, detector init/edge cases, full pipeline orchestration.
+*   **Pending:** Implement fallback search strategy (low confidence → search all 3 FAISS indexes), copy best.pt to `checkpoints/`, end-to-end integration test.
 
 ---
 
