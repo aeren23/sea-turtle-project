@@ -1,0 +1,19 @@
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  margin-top: var(--space-8);
+}
+
+.pagination__btn { min-width: 100px; }
+
+.pagination__info {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.pagination__info strong {
+  color: var(--color-text-primary);
+}

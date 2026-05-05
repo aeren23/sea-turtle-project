@@ -1,0 +1,12 @@
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-layout__main {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-8) var(--space-8);
+  max-width: calc(100vw - var(--sidebar-width) - var(--datastrip-width));
+}

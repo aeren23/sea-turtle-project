@@ -1,0 +1,33 @@
+.spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.spinner--sm .spinner__ring { width: 32px; height: 32px; }
+.spinner--md .spinner__ring { width: 52px; height: 52px; }
+.spinner--lg .spinner__ring { width: 80px; height: 80px; }
+
+.spinner__track {
+  stroke: var(--color-ocean-border);
+}
+
+.spinner__arc {
+  stroke: var(--color-biolum-green);
+  stroke-linecap: round;
+  stroke-dasharray: 80;
+  stroke-dashoffset: 60;
+  animation: spin-ring 1s linear infinite;
+  transform-origin: center;
+  filter: drop-shadow(0 0 4px var(--color-biolum-green));
+}
+
+.spinner__label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}

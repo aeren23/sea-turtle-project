@@ -4,11 +4,15 @@
 
 This document tracks the high-level progress, completed milestones, and current active phase of the SeaTurtle Photo-ID project. It is intended to provide immediate context to any AI Agent joining the workspace.
 
-## 🟢 Current Phase: Phase 4.0 — Web Platform (Frontend)
-**Status:** ⏳ Pending
+## 🟡 Current Phase: Phase 4.0 — Web Platform (Frontend)
+**Status:** 🚧 In Progress
 
-All backend infrastructure is fully containerized and orchestrated via Docker Compose. The entire system (PostgreSQL, FastAPI AI, .NET 10 API) boots with a single `docker compose up` command. The next major step is to build the frontend application for researchers.
-*   **Focus:** UI/UX, dashboards, photo upload interfaces, and API integration.
+All backend infrastructure is fully containerized. The React frontend is being implemented as Phase 4.0.
+*   **Technology:** Vite + React 18 + TypeScript, Zustand, Axios, React Router v6, React Hook Form + Zod
+*   **Design Theme:** "Bioluminescent Field Station" — Syne + JetBrains Mono fonts, ocean deep palette, animated sonar rings, confidence gauges
+*   **API Coverage:** All 9 backend endpoints covered across 6 pages
+*   **Docker:** `seaturtle-frontend` service (Nginx + React) on port 3000 added to docker-compose.yml
+*   **Build Status:** ✅ TypeScript build passing — 0 errors, 215 modules
 
 ---
 

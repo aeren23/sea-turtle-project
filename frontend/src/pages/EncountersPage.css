@@ -1,0 +1,87 @@
+.encounters-page { display: flex; flex-direction: column; gap: var(--space-8); }
+
+.encounters-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.encounters-page__title {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.encounters-page__subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-1);
+}
+
+.encounters-page__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+}
+
+.encounters-page__empty {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--color-text-dim);
+  padding: var(--space-16);
+}
+
+/* Table */
+.encounters-page__table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-ocean-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-ocean-mid);
+}
+
+.encounters-page__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.encounters-page__thead-row th {
+  padding: var(--space-4) var(--space-4);
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  border-bottom: 1px solid var(--color-ocean-border);
+  white-space: nowrap;
+}
+
+/* Edit form */
+.encounters-page__edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.encounters-page__coord-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.encounters-page__textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.encounters-page__modal-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  padding-top: var(--space-2);
+}

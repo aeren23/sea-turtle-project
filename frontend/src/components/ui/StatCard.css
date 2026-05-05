@@ -1,0 +1,71 @@
+.stat-card {
+  position: relative;
+  background: var(--color-ocean-mid);
+  border: 1px solid var(--color-ocean-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  overflow: hidden;
+  transition: border-color var(--transition-base), transform var(--transition-base);
+}
+
+.stat-card:hover {
+  border-color: rgba(0, 200, 150, 0.4);
+  transform: translateY(-2px);
+}
+
+.stat-card__icon {
+  font-size: 1.8rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px var(--color-biolum-green));
+}
+
+.stat-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.stat-card__value-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.stat-card__value {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--color-sand-beige);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.stat-card__unit {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+  letter-spacing: 0.04em;
+}
+
+.stat-card__label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Green corner accent line */
+.stat-card__accent {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 3px;
+  height: 40%;
+  background: var(--color-biolum-green);
+  border-radius: 0 var(--radius-lg) 0 var(--radius-sm);
+  opacity: 0.6;
+}

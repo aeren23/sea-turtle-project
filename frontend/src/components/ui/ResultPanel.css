@@ -1,0 +1,127 @@
+.result-panel {
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-ocean-border);
+  overflow: hidden;
+}
+
+.result-panel--known {
+  border-color: rgba(0, 200, 150, 0.3);
+  background: linear-gradient(135deg, var(--color-ocean-mid), rgba(0, 200, 150, 0.04));
+}
+
+.result-panel--unknown {
+  border-color: rgba(255, 107, 107, 0.3);
+  background: linear-gradient(135deg, var(--color-ocean-mid), rgba(255, 107, 107, 0.04));
+}
+
+/* Status bar */
+.result-panel__status-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-ocean-border);
+}
+
+.result-panel__status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.result-panel--known   .result-panel__status-indicator { background: var(--color-biolum-green); box-shadow: 0 0 8px var(--color-biolum-green); }
+.result-panel--unknown .result-panel__status-indicator { background: var(--color-coral-warn);  box-shadow: 0 0 8px var(--color-coral-warn); }
+
+.result-panel__status-text {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  flex: 1;
+}
+
+/* Body */
+.result-panel__body {
+  display: flex;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  align-items: flex-start;
+}
+
+/* Gauge column */
+.result-panel__gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.result-panel__gauge-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Info column */
+.result-panel__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.result-panel__id {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--color-sand-beige);
+  letter-spacing: 0.04em;
+}
+
+.result-panel__nickname {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--color-biolum-green);
+  font-style: italic;
+}
+
+.result-panel__species {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--color-ice-blue);
+  font-style: italic;
+}
+
+.result-panel__photo {
+  width: 100px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-ocean-border);
+}
+
+.result-panel__actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+/* Unknown state */
+.result-panel__unknown-icon {
+  font-size: 3rem;
+  color: var(--color-coral-warn);
+  opacity: 0.7;
+}
+
+.result-panel__unknown-text {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+  max-width: 380px;
+}

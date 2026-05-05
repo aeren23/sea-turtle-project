@@ -52,5 +52,16 @@ services:
       seaturtle-ai:
         condition: service_healthy
 
+  seaturtle-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: seaturtle-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - seaturtle-api
+    restart: unless-stopped
+
 volumes:
   pgdata:

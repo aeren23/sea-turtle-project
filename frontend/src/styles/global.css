@@ -1,0 +1,330 @@
+/* ============================================================
+   SeaTurtle Photo-ID — Global Design System
+   Theme: Bioluminescent Field Station
+   ============================================================ */
+
+/* --- Design Tokens ----------------------------------------- */
+:root {
+  /* Color Palette */
+  --color-ocean-deep:    #0A1628;   /* Primary background */
+  --color-ocean-mid:     #0F2040;   /* Card / surface background */
+  --color-ocean-light:   #162A50;   /* Elevated surface */
+  --color-ocean-border:  #1E3A6A;   /* Subtle border */
+
+  --color-biolum-green:  #00C896;   /* Primary accent — bioluminescent */
+  --color-biolum-dim:    #00855F;   /* Hover state */
+  --color-biolum-glow:   rgba(0, 200, 150, 0.15); /* Glow/haze */
+
+  --color-ice-blue:      #A8D5E2;   /* Secondary text / labels */
+  --color-sand-beige:    #E8D5B0;   /* Warm highlight text */
+  --color-coral-warn:    #FF6B6B;   /* Warning / unknown state */
+  --color-amber:         #F5A623;   /* Pending / moderate confidence */
+
+  --color-text-primary:  #EEF4FF;   /* Main body text */
+  --color-text-secondary:#7FA4C8;   /* Muted labels */
+  --color-text-dim:      #4A6A8A;   /* Very muted, decorative */
+
+  /* Typography */
+  --font-display: 'Syne', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 20px rgba(0, 200, 150, 0.3);
+  --shadow-glow-strong: 0 0 40px rgba(0, 200, 150, 0.5);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+
+  /* Sidebar */
+  --sidebar-width: 220px;
+  --datastrip-width: 60px;
+}
+
+/* --- Reset & Base ------------------------------------------ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  background-color: var(--color-ocean-deep);
+  /* Subtle noise texture + radial depth gradient */
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 80% 60% at 50% 0%, #0F2A4A 0%, #0A1628 60%);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+a {
+  color: var(--color-biolum-green);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+a:hover { color: var(--color-biolum-dim); }
+
+img { display: block; max-width: 100%; }
+
+button {
+  cursor: pointer;
+  font-family: var(--font-display);
+  border: none;
+  outline: none;
+}
+
+input, textarea, select {
+  font-family: var(--font-mono);
+}
+
+/* --- Typography Utilities ---------------------------------- */
+.display { font-family: var(--font-display); }
+.mono    { font-family: var(--font-mono); }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  line-height: 1.2;
+  color: var(--color-text-primary);
+}
+
+/* --- Scrollbar -------------------------------------------- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-ocean-deep); }
+::-webkit-scrollbar-thumb {
+  background: var(--color-ocean-border);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-biolum-green); }
+
+/* --- Keyframe Animations ----------------------------------- */
+
+/* Sonar pulse ring */
+@keyframes sonar-pulse {
+  0%   { transform: scale(0.8); opacity: 0.8; }
+  70%  { transform: scale(2.4); opacity: 0; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* Page / card reveal */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Count-up glow flash */
+@keyframes value-flash {
+  0%   { color: var(--color-biolum-green); }
+  100% { color: var(--color-sand-beige); }
+}
+
+/* AI processing pulse */
+@keyframes ai-pulse {
+  0%, 100% { opacity: 1; box-shadow: var(--shadow-glow); }
+  50%       { opacity: 0.6; box-shadow: var(--shadow-glow-strong); }
+}
+
+/* Gauge stroke fill */
+@keyframes gauge-fill {
+  from { stroke-dashoffset: 502; }
+}
+
+/* Spinner ring */
+@keyframes spin-ring {
+  to { transform: rotate(360deg); }
+}
+
+/* Slide up panel (TurtleCard hover) */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Data strip scan line */
+@keyframes scan-line {
+  0%   { top: 0%; }
+  100% { top: 100%; }
+}
+
+/* --- Utility Classes --------------------------------------- */
+.fade-up {
+  animation: fade-up var(--transition-slow) both;
+}
+
+.fade-up-1 { animation: fade-up 0.4s 0.05s both; }
+.fade-up-2 { animation: fade-up 0.4s 0.12s both; }
+.fade-up-3 { animation: fade-up 0.4s 0.20s both; }
+.fade-up-4 { animation: fade-up 0.4s 0.28s both; }
+.fade-up-5 { animation: fade-up 0.4s 0.36s both; }
+
+/* Biolum green tag */
+.tag {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  background: var(--color-biolum-glow);
+  color: var(--color-biolum-green);
+  border: 1px solid rgba(0, 200, 150, 0.3);
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tag--warn {
+  background: rgba(255, 107, 107, 0.1);
+  color: var(--color-coral-warn);
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+.tag--amber {
+  background: rgba(245, 166, 35, 0.1);
+  color: var(--color-amber);
+  border-color: rgba(245, 166, 35, 0.3);
+}
+
+/* --- Button System ----------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+}
+
+.btn--primary {
+  background: var(--color-biolum-green);
+  color: var(--color-ocean-deep);
+}
+.btn--primary:hover {
+  background: var(--color-biolum-dim);
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-1px);
+}
+.btn--primary:active { transform: translateY(0); }
+
+.btn--ghost {
+  background: transparent;
+  color: var(--color-ice-blue);
+  border: 1px solid var(--color-ocean-border);
+}
+.btn--ghost:hover {
+  border-color: var(--color-biolum-green);
+  color: var(--color-biolum-green);
+}
+
+.btn--danger {
+  background: rgba(255, 107, 107, 0.1);
+  color: var(--color-coral-warn);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+.btn--danger:hover {
+  background: rgba(255, 107, 107, 0.2);
+  box-shadow: 0 0 16px rgba(255, 107, 107, 0.2);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* --- Form Elements ----------------------------------------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field__label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.field__input {
+  background: var(--color-ocean-mid);
+  border: 1px solid var(--color-ocean-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  width: 100%;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+}
+
+.field__input:focus {
+  border-color: var(--color-biolum-green);
+  box-shadow: 0 0 0 3px var(--color-biolum-glow);
+}
+
+.field__input::placeholder { color: var(--color-text-dim); }
+
+.field__error {
+  font-size: 0.72rem;
+  color: var(--color-coral-warn);
+  margin-top: var(--space-1);
+}
+
+/* --- Card Surface ------------------------------------------ */
+.card {
+  background: var(--color-ocean-mid);
+  border: 1px solid var(--color-ocean-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+}
+
+.card--elevated {
+  background: var(--color-ocean-light);
+}
+
+/* --- Divider ---------------------------------------------- */
+.divider {
+  height: 1px;
+  background: var(--color-ocean-border);
+  border: none;
+  margin: var(--space-4) 0;
+}

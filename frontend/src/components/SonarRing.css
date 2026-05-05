@@ -1,0 +1,11 @@
+.sonar-ring {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sonar-ring__pulse {
+  transform-origin: center;
+  animation: sonar-pulse 2.7s ease-out infinite;
+}

@@ -1,0 +1,112 @@
+.turtle-card {
+  position: relative;
+  background: var(--color-ocean-mid);
+  border: 1px solid var(--color-ocean-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
+  aspect-ratio: 3 / 4;
+}
+
+.turtle-card:hover {
+  border-color: rgba(0, 200, 150, 0.4);
+  transform: translateY(-6px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Photo section */
+.turtle-card__photo {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--color-ocean-deep);
+}
+
+.turtle-card__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-slow);
+}
+
+.turtle-card:hover .turtle-card__photo img {
+  transform: scale(1.05);
+}
+
+.turtle-card__photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4rem;
+  color: var(--color-ocean-border);
+}
+
+.turtle-card__species-badge {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  padding: var(--space-1) var(--space-2);
+  background: rgba(10, 22, 40, 0.85);
+  color: var(--color-ice-blue);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-ocean-border);
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - 2 * var(--space-3));
+  font-style: italic;
+}
+
+/* Slide-up hover panel */
+.turtle-card__panel {
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  background: linear-gradient(to top, var(--color-ocean-mid) 80%, transparent);
+  transition: transform var(--transition-base);
+}
+
+.turtle-card__code {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-sand-beige);
+  letter-spacing: 0.04em;
+}
+
+.turtle-card__nickname {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-biolum-green);
+  margin-top: var(--space-1);
+  font-style: italic;
+}
+
+.turtle-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+}
+
+.turtle-card__meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--color-text-secondary);
+}
+
+/* Hover: slide panel up slightly for depth */
+.turtle-card:hover .turtle-card__panel {
+  transform: translateY(-4px);
+}

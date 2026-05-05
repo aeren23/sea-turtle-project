@@ -66,14 +66,36 @@ sea-turtle-project/
 │   ├── gallery_index/                # .gitignored — faiss_*.bin + meta_*.json (6 files)
 │   ├── datasets/yolo_head/           # .gitignored — YOLO format dataset (images + labels + dataset.yaml)
 │   └── requirements.txt
-├── backend/                  # .NET 8 REST API (Phase 3 — not started)
-├── ai-service/               # FastAPI Python microservice (Phase 3 — scaffolded)
-├── frontend/                 # React (Phase 4 — not started)
+├── backend/                  # .NET 10 REST API (Phase 3 — COMPLETED)
+│   └── SeaTurtle.API/
+│       ├── Controllers/          # Auth, Turtles, Encounters, Identification, Dashboard
+│       ├── Services/             # AiServiceClient, IdentificationService, TurtleService, etc.
+│       ├── Models/
+│       │   ├── Entities/         # Turtle, Encounter, Photo, User (EF Core entities)
+│       │   └── DTOs/             # Request/Response DTOs per feature area
+│       ├── Data/
+│       │   ├── AppDbContext.cs   # EF Core DbContext
+│       │   └── DbSeeder.cs       # Auto-seeds 438 turtles + 8,526 photos from FAISS metadata
+│       ├── Migrations/           # EF Core PostgreSQL migrations
+│       ├── Dockerfile            # Multi-stage .NET 10 SDK build + ASP.NET runtime
+│       ├── Program.cs            # DI wiring, JWT, Swagger, StaticFiles, seeding
+│       └── appsettings.json      # Base config (overridden by env vars in Docker)
+├── ai-service/               # FastAPI Python microservice (Phase 2.6 — COMPLETED)
+│   ├── main.py               # FastAPI app: /identify, /register, /health
+│   ├── schemas.py            # Pydantic request/response models
+│   ├── id_generator.py       # Next turtle ID generator (reads existing tXXX dirs)
+│   ├── photo_storage.py      # Photo save/move logic (known→tXXX, unknown→_staging)
+│   ├── requirements.txt
+│   └── Dockerfile            # Python 3.10-slim with PyTorch, FAISS, OpenCV, Ultralytics
+├── docker-compose.yml        # Orchestrates seaturtle-db + seaturtle-ai + seaturtle-api
+├── .dockerignore             # Excludes datasets, bin/, obj/, __pycache__, venv/
+├── frontend/                 # React/Next.js (Phase 4 — PENDING)
 ├── agents/research_crew/     # CrewAI multi-agent research (Phase 1 — completed)
 └── docs/
     ├── specifications/
     │   ├── context.md        # THIS FILE — agent briefing
     │   ├── state.md          # Phase progress tracker
+    │   ├── backend_plan.md   # Detailed .NET backend implementation plan
     │   └── spec.md           # Original project specification
     ├── reports/              # Per-phase technical reports
     ├── rules/                # coding_standards.md, git_standards.md, logging_standards.md
@@ -255,9 +277,116 @@ python -m pytest tests/ -v
 | `IDENTIFICATION_THRESHOLD = 0.6` not tuned | May have false positives/negatives | Analyze similarity distribution after gallery build |
 | Model accuracy at 49.69% Top-1 | ~1 in 2 new-photo queries correct | GeM Pooling, BNNeck, longer training (see `docs/future_phases.md`) |
 | FAISS IndexFlatIP (exact search) | O(n) per query — scales linearly | Switch to IndexIVFFlat for large galleries |
-| No re-ID for new turtles | Unknown individuals not auto-registered | Build registration flow in backend (Phase 3) |
+| ~~No re-ID for new turtles~~ | ~~Unknown individuals not auto-registered~~ | **Resolved (Phase 3):** `/register` endpoint in both FastAPI and .NET; unknown photos staged, then registered on confirm |
+| Host port conflicts | If `dotnet run` was previously used, `localhost:5000` may be occupied by an orphan process | Run `netstat -ano | Select-String ":5000"` and `Stop-Process` the orphan before `docker compose up` |
 
 ---
+
+## 14. Backend API (.NET 10)
+
+### Services Architecture
+
+```
+HTTP Request
+    │
+    ▼
+ IdentificationController  (POST /api/Identification/identify)
+    │
+    ▼
+ IdentificationService     (business logic: save encounter, photo record)
+    │
+    ├── AiServiceClient    (HTTP call → seaturtle-ai:8000/api/v1/identify)
+    │   └── Returns: IsKnown, TurtleId, Score, BiologicalSide, SessionId
+    │
+    └── AppDbContext       (EF Core → PostgreSQL)
+        ├── Turtles
+        ├── Encounters
+        └── Photos
+```
+
+### Key API Endpoints
+
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| POST | `/api/Auth/login` | ❌ | JWT login |
+| POST | `/api/Auth/register` | ❌ | New user registration |
+| POST | `/api/Identification/identify` | ✅ | Upload photo → identify turtle |
+| POST | `/api/Identification/register` | ✅ | Confirm unknown → new turtle |
+| GET | `/api/Turtles` | ✅ | List all turtles (paginated) |
+| GET | `/api/Turtles/{id}` | ✅ | Get single turtle + encounters |
+| GET | `/api/Encounters` | ✅ | List encounters |
+| GET | `/api/Dashboard/stats` | ✅ | System-wide statistics |
+| GET | `/photos/{turtleCode}/{filename}` | ❌ | Serve static photos |
+
+### Default Credentials (seeded)
+- **Email:** `admin@seaturtle.org`
+- **Password:** `Admin1234!`
+- **Role:** Admin
+
+### Key Configuration
+
+```json
+// appsettings.json (overridden by docker-compose env vars)
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=seaturtledb;Username=turtle_admin;Password=TurtleDev2026!"
+  },
+  "AiService": { "BaseUrl": "http://localhost:8000" },
+  "AiCore": {
+    "ImagesDir": "../../ai-core/archiveu/turtles-data/data/images",
+    "GalleryIndexDir": "../../ai-core/gallery_index"
+  }
+}
+```
+
+---
+
+## 15. Docker Compose Deployment
+
+### Quick Start
+
+```bash
+# First time — builds all images (takes ~5 min, mostly PyTorch download)
+docker compose up -d --build
+
+# Subsequent starts — cached, takes ~10 seconds
+docker compose up -d
+
+# Check health
+docker compose ps
+
+# View logs
+docker compose logs -f seaturtle-api
+docker compose logs -f seaturtle-ai
+```
+
+### Service Map
+
+| Service | Image | Host Port | Purpose |
+|---------|-------|-----------|----------|
+| `seaturtle-db` | `postgres:16-alpine` | 5432 | PostgreSQL database |
+| `seaturtle-ai` | Custom (Python 3.10-slim) | 8000 | FastAPI AI microservice |
+| `seaturtle-api` | Custom (.NET 10 ASP.NET) | 5000 | REST API backend |
+
+### Bind Mounts (Data Strategy)
+
+```yaml
+# ai-core/ is mounted into BOTH AI and API containers:
+seaturtle-ai:
+  volumes:
+    - ./ai-core:/app/ai-core   # FAISS indexes, checkpoints, images
+
+seaturtle-api:
+  volumes:
+    - ./ai-core:/app/ai-core   # For DbSeeder (meta_*.json) + StaticFiles (/photos/)
+```
+
+> **⚠️ Port Conflict Warning:** If you previously ran `dotnet run` directly, an orphan process may occupy `localhost:5000`. Diagnose: `netstat -ano | Select-String ":5000"`. Fix: `Stop-Process -Id <PID> -Force`.
+
+### Access Points
+- **.NET Swagger UI:** http://localhost:5000/swagger
+- **FastAPI Docs:** http://localhost:8000/docs
+- **PostgreSQL:** `localhost:5432` (user: `turtle_admin`, db: `seaturtledb`)
 
 ## 11. Coding Standards (Summary)
 
@@ -299,4 +428,6 @@ YOLO_IMAGE_SIZE           = 640
 
 ---
 
-*Last updated: 2026-05-05 | Maintained by: AI Coding Assistants & Project Team*
+---
+
+*Last updated: 2026-05-05 (Phase 3.5 complete — Docker Compose orchestration) | Maintained by: AI Coding Assistants & Project Team*
