@@ -602,3 +602,24 @@ The development of **Module A (Head Detection)** is the first and essential step
 * **Issues & Resolutions:**
   - **Issue:** `prepare_yolo_dataset.py` was copying all 8,526 images to `datasets/yolo_head/images/`, wasting disk space.
   - **Resolution:** Refactored to write only label `.txt` files + index files. Zero image duplication.
+
+---
+
+### Log Entry — 2026-05-05 16:15
+
+* **Phase:** 2.6 — Fallback Search & End-to-End Verification
+* **Action:** Implemented multi-index fallback (Option C) and verified full pipeline.
+* **Files Changed:**
+  - `ai-core/src/inference/inference_pipeline.py` (multi-index search: loop all 3 BIOLOGICAL_SIDES, sort by score, return top_k)
+  - `ai-core/tests/test_inference_pipeline.py` (updated mocks for 3-call pattern + new `test_fallback_finds_match_in_different_index`)
+  - `docs/reports/mvp_fallback_strategy.md` (status → Implemented)
+  - `docs/specifications/state.md` (pending items → completed)
+* **Details/Decisions:**
+  - **Option C chosen:** Always search all 3 FAISS indexes regardless of YOLO orientation prediction. Best overall match returned. YOLO orientation still reported as metadata.
+  - **Rationale:** FAISS search cost (~5ms for 8,526 vectors) is negligible vs YOLO (~100ms) and embedding extraction (~50ms). Eliminates orientation misclassification risk entirely.
+  - **Smoke Test Results:**
+    - `t001/anuJvqUqBB.JPG` → YOLO confidence 0.76, matched t001 (score 0.986)
+    - `t042/CoxZEtKVTi.JPG` → YOLO confidence 0.86, matched t042 (score 0.979)
+    - Top-5 separation strong (2nd best ~0.53 vs 1st ~0.98).
+  - **Tests:** 8/8 passing including new cross-index fallback test.
+* **Issues & Resolutions:** None — implementation clean, no unexpected failures.

@@ -16,6 +16,7 @@ import numpy as np
 import torch
 
 from src.config.data_config import (
+    BIOLOGICAL_SIDES,
     FAISS_INDEX_DIR,
     IDENTIFICATION_THRESHOLD,
     TOP_K_RESULTS,
@@ -130,12 +131,21 @@ class TurtleInferencePipeline:
         # 5. Extract embedding
         embedding = self.extractor.extract_single(image_tensor)
 
-        # 6. Search the correct FAISS index
-        matches = self.vector_store.search(
-            query_embedding=embedding,
-            biological_side=detection.biological_side,
-            top_k=self.top_k,
-        )
+        # 6. Search ALL FAISS indexes (fallback strategy)
+        # Left/right orientation classification is unreliable (31-42% confusion),
+        # so we search all 3 indexes and return the best overall match.
+        all_matches: list[tuple[float, dict]] = []
+        for side in BIOLOGICAL_SIDES:
+            side_matches = self.vector_store.search(
+                query_embedding=embedding,
+                biological_side=side,
+                top_k=self.top_k,
+            )
+            all_matches.extend(side_matches)
+
+        matches = sorted(all_matches, key=lambda x: x[0], reverse=True)[
+            : self.top_k
+        ]
 
         # 7. Build identification result
         if not matches:

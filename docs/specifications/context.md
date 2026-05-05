@@ -60,7 +60,7 @@ sea-turtle-project/
 │   │   ├── test_embedding_extractor.py  # 3 tests — shape, L2 norm guarantee
 │   │   ├── test_identification.py    # 4 tests — end-to-end pipeline
 │   │   ├── test_head_detector.py     # 5 tests — detection DTO, init, edge cases
-│   │   └── test_inference_pipeline.py # 6 tests — full orchestration flow
+│   │   └── test_inference_pipeline.py # 8 tests — full orchestration flow + fallback
 │   ├── train.py                      # Main training entry point
 │   ├── checkpoints/                  # .gitignored — best_turtle_resnet_orientation.pth + yolo_head_detector.pt
 │   ├── gallery_index/                # .gitignored — faiss_*.bin + meta_*.json (6 files)
@@ -126,8 +126,8 @@ Raw Photo (any angle)
         │
    HeadDetector (YOLOv8n — 3 classes)
    ├── bbox: [x, y, w, h]        (COCO format)
-   ├── side: "left"|"right"|"top" (from class name)
-   └── confidence: 0.92
+   ├── side: "left"|"right"|"top" (informational only)
+   └── confidence: 0.76
         │
    TurtlePreprocessingPipeline
    (crop → resize 224×224 → CLAHE → color fix)
@@ -135,10 +135,16 @@ Raw Photo (any angle)
    EmbeddingExtractor (ResNet-50)
    512-d L2-normalized embedding
         │
-   TurtleVectorStore.search(side=detected_side)
+   ┌── Fallback Strategy (MVP) ──────────────────┐
+   │  Search ALL 3 FAISS indexes:                 │
+   │    faiss_left → top matches                  │
+   │    faiss_right → top matches                 │
+   │    faiss_top → top matches                   │
+   │  Sort all by score ↓ , return top_k          │
+   └──────────────────────────────────────────────┘
         │
    InferenceResult
-   ├── detection: HeadDetection
+   ├── detection: HeadDetection (side = informational)
    ├── identification: IdentificationResult
    └── error: None
 
@@ -152,6 +158,7 @@ Raw Photo (any angle)
 | **3 Separate FAISS Indexes** | One per biological side (left/right/top) | Left profile embedding must NOT match against right profile gallery |
 | **BBox Required at Query Time** | Identifier must receive the head bounding box | Gallery was built with cropped heads — querying without bbox gives mismatched embeddings |
 | **Auto Detection via YOLO** | `TurtleInferencePipeline` auto-detects bbox + side via YOLOv8n | Replaces manual `--bbox` and `--side` — `HeadDetector` handles both in one pass |
+| **Fallback Multi-Index Search** | Always search all 3 FAISS indexes, return best overall match | Left/right confusion (31–42%) makes single-index unreliable; fallback cost is ~5ms |
 | **L2 Norm Guarantee** | Defensive `F.normalize()` in EmbeddingExtractor | FAISS IndexFlatIP = cosine similarity only when vectors are unit-length |
 | **Virtual Identity Format** | `{turtle_id}_{side}` e.g. `t042_left` | Prevents cross-side confusion in classification labels |
 
@@ -224,8 +231,11 @@ python train.py
 # Build the FAISS gallery (creates gallery_index/ with 6 files)
 python scripts/build_gallery.py
 
-# Identify a turtle (bbox required for accurate results)
-python scripts/identify_turtle.py --image path/to/photo.jpg --side left --bbox "x,y,w,h"
+# Autonomous inference (no manual params) — RECOMMENDED
+python scripts/infer_turtle.py --image path/to/photo.jpg
+
+# Generate fallback strategy demo visuals
+python scripts/visualize_fallback_demo.py
 
 # Run demo tests (known + unknown turtle)
 python scripts/test_gallery_demo.py
@@ -240,7 +250,8 @@ python -m pytest tests/ -v
 
 | Limitation | Impact | Planned Fix |
 |------------|--------|-------------|
-| ~~No orientation classifier~~ | ~~User must supply `--side` manually~~ | **Resolved (Phase 2.6):** YOLOv8n with 3 classes auto-detects side |
+| ~~No orientation classifier~~ | ~~User must supply `--side` manually~~ | **Resolved (Phase 2.6):** YOLOv8n auto-detects side + fallback multi-index search |
+| YOLO left/right confusion (31–42%) | Orientation prediction unreliable for left↔right | Fallback search all 3 indexes absorbs noise; future fix: annotation cleanup + retrain |
 | `IDENTIFICATION_THRESHOLD = 0.6` not tuned | May have false positives/negatives | Analyze similarity distribution after gallery build |
 | Model accuracy at 49.69% Top-1 | ~1 in 2 new-photo queries correct | GeM Pooling, BNNeck, longer training (see `docs/future_phases.md`) |
 | FAISS IndexFlatIP (exact search) | O(n) per query — scales linearly | Switch to IndexIVFFlat for large galleries |
@@ -262,12 +273,29 @@ Full rules: `docs/rules/coding_standards.md` and `docs/rules/logging_standards.m
 
 ## 12. YOLO Head Detector Details
 
-- **Model:** YOLOv8-Nano (Ultralytics)
+- **Model:** YOLOv8-Nano (Ultralytics), pretrained on COCO, fine-tuned 40 epochs
 - **Classes:** 3 — `head_left` (0), `head_right` (1), `head_top` (2)
-- **Training Data:** Converted from `annotations.json` COCO format → YOLO format
+- **Training Data:** 8,526 images converted from `annotations.json` COCO format → YOLO format (6,822 train / 1,704 val)
 - **Orientation Mapping:** Same as `_map_orientation_to_side()` — left/topleft→0, right/topright→1, rest→2
+- **Results:** mAP50 = 0.761, Precision = 0.655, Recall = 0.783
+- **Known Issue:** Left↔Right confusion 31–42% due to annotation inconsistency (not a model bug)
+- **Mitigation:** Fallback multi-index search (always search all 3 FAISS indexes)
 - **Checkpoint:** `checkpoints/yolo_head_detector.pt`
 - **Confidence Threshold:** 0.25 (configurable in `data_config.py`)
+- **Reports:** `docs/reports/phase2_6_yolo_head_detection.md`, `docs/reports/fallback_demo_report.md`
+
+---
+
+## 13. YOLO Configuration (`data_config.py`)
+
+```python
+YOLO_CLASS_NAMES          = {0: "head_left", 1: "head_right", 2: "head_top"}
+YOLO_CLASS_TO_SIDE        = {"head_left": "left", "head_right": "right", "head_top": "top"}
+YOLO_CHECKPOINT_PATH      = PROJECT_ROOT / "checkpoints/yolo_head_detector.pt"
+YOLO_DATASET_DIR          = PROJECT_ROOT / "datasets/yolo_head"
+YOLO_CONFIDENCE_THRESHOLD = 0.25
+YOLO_IMAGE_SIZE           = 640
+```
 
 ---
 

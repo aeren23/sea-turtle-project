@@ -5,7 +5,7 @@
 This document tracks the high-level progress, completed milestones, and current active phase of the SeaTurtle Photo-ID project. It is intended to provide immediate context to any AI Agent joining the workspace.
 
 ## 🟢 Current Phase: Phase 2.6 - Production Inference Pipeline
-**Status:** Training Complete — MVP Evaluation
+**Status:** ✅ Completed
 
 Built a fully autonomous inference pipeline that takes a raw turtle photograph and returns an identification result without any manual parameters (no `--bbox`, no `--side`).
 *   **Focus:** Automatic head detection + orientation classification via YOLOv8n, end-to-end inference orchestration.
@@ -25,7 +25,11 @@ Built a fully autonomous inference pipeline that takes a raw turtle photograph a
     *   Config: `YOLO_CHECKPOINT_PATH`, `YOLO_DATASET_DIR`, `YOLO_CLASS_NAMES`, `YOLO_CLASS_TO_SIDE` added to `data_config.py`.
     *   `ultralytics>=8.0.0` added to `requirements.txt`.
     *   **10 unit tests** covering HeadDetection DTO, detector init/edge cases, full pipeline orchestration.
-*   **Pending:** Implement fallback search strategy (low confidence → search all 3 FAISS indexes), copy best.pt to `checkpoints/`, end-to-end integration test.
+*   **Completed Post-Training:**
+    *   Fallback search strategy implemented (Option C — search all 3 FAISS indexes, return best overall match). Orientation classification noise fully absorbed.
+    *   `best.pt` auto-copied to `checkpoints/yolo_head_detector.pt` by training script.
+    *   End-to-end smoke test passed: t001 → 0.986 score, t042 → 0.979 score. Pipeline fully operational.
+    *   8/8 unit tests passing (including new fallback cross-index test).
 
 ---
 

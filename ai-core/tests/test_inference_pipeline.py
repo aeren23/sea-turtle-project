@@ -88,9 +88,10 @@ class TestPipelineRun:
         mock_pipeline.val_transforms.return_value = {"image": MagicMock()}
         mock_pipeline.extractor.extract_single.return_value = np.random.randn(512).astype(np.float32)
 
-        mock_pipeline.vector_store.search.return_value = [
-            (0.85, {"turtle_id": "t042", "biological_side": "left"}),
-            (0.72, {"turtle_id": "t015", "biological_side": "left"}),
+        mock_pipeline.vector_store.search.side_effect = [
+            [(0.85, {"turtle_id": "t042", "biological_side": "left"})],
+            [(0.42, {"turtle_id": "t015", "biological_side": "right"})],
+            [],
         ]
 
         result = mock_pipeline.run("test/photo.jpg")
@@ -123,8 +124,10 @@ class TestPipelineRun:
         mock_pipeline.val_transforms.return_value = {"image": MagicMock()}
         mock_pipeline.extractor.extract_single.return_value = np.random.randn(512).astype(np.float32)
 
-        mock_pipeline.vector_store.search.return_value = [
-            (0.45, {"turtle_id": "t099", "biological_side": "right"}),
+        mock_pipeline.vector_store.search.side_effect = [
+            [],
+            [(0.45, {"turtle_id": "t099", "biological_side": "right"})],
+            [],
         ]
 
         result = mock_pipeline.run("test/unknown.jpg")
@@ -178,7 +181,7 @@ class TestPipelineRun:
         mock_pipeline.val_transforms.return_value = {"image": MagicMock()}
         mock_pipeline.extractor.extract_single.return_value = np.random.randn(512).astype(np.float32)
 
-        mock_pipeline.vector_store.search.return_value = []
+        mock_pipeline.vector_store.search.side_effect = [[], [], []]
 
         result = mock_pipeline.run("test/empty_index.jpg")
 
@@ -186,3 +189,40 @@ class TestPipelineRun:
         assert result.identification.is_known is False
         assert result.identification.best_match_id is None
         assert len(result.identification.top_k_matches) == 0
+
+    @patch("src.inference.inference_pipeline.cv2.cvtColor")
+    @patch("src.inference.inference_pipeline.cv2.imdecode")
+    @patch("src.inference.inference_pipeline.np.fromfile")
+    def test_fallback_finds_match_in_different_index(
+        self, mock_fromfile, mock_imdecode, mock_cvtcolor, mock_pipeline
+    ):
+        """Fallback correctly finds match even when YOLO predicts wrong side."""
+        fake_image = np.zeros((480, 640, 3), dtype=np.uint8)
+        mock_imdecode.return_value = fake_image
+        mock_cvtcolor.return_value = fake_image
+
+        detection = HeadDetection(
+            bbox=[10.0, 20.0, 100.0, 80.0],
+            biological_side="left",
+            confidence=0.45,
+        )
+        mock_pipeline.head_detector.detect.return_value = detection
+        mock_pipeline.pipeline.process.return_value = fake_image
+
+        mock_pipeline.val_transforms.return_value = {"image": MagicMock()}
+        mock_pipeline.extractor.extract_single.return_value = np.random.randn(512).astype(np.float32)
+
+        # YOLO said "left" but best match is in "right" index
+        mock_pipeline.vector_store.search.side_effect = [
+            [(0.35, {"turtle_id": "t010", "biological_side": "left"})],
+            [(0.91, {"turtle_id": "t042", "biological_side": "right"})],
+            [],
+        ]
+
+        result = mock_pipeline.run("test/cross_index.jpg")
+
+        assert result.error is None
+        assert result.detection.biological_side == "left"
+        assert result.identification.is_known is True
+        assert result.identification.best_match_id == "t042"
+        assert result.identification.best_match_score == 0.91
