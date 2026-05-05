@@ -701,3 +701,36 @@ The development of **Module A (Head Detection)** is the first and essential step
   - 36/36 ai-core unit tests passing ✓ (no breakage from config additions)
   - Pre-existing test_training_components.py has unrelated import error (stale get_triplet_loss_and_miner reference from ArcFace migration)
 * **Issues & Resolutions:** None.
+
+---
+### [2026-05-05 22:00:00] — Antigravity / Docker Compose Orchestration
+* **Action/Task:** Containerized the entire SeaTurtle backend stack using Docker Compose — PostgreSQL, FastAPI AI microservice, and .NET 10 Web API.
+* **Files Affected:**
+  - `docker-compose.yml` (expanded from single PostgreSQL to full 3-service stack)
+  - `ai-service/Dockerfile` [NEW] (Python 3.10-slim with PyTorch, FAISS, OpenCV, Ultralytics)
+  - `backend/SeaTurtle.API/Dockerfile` [NEW] (multi-stage .NET 10 SDK build + ASP.NET runtime)
+  - `.dockerignore` [NEW] (excludes datasets, build artifacts, Python/venv dirs)
+  - `backend/SeaTurtle.API/Services/AiServiceClient.cs` (rewritten JSON parsing from DTO-based to JsonDocument-based)
+* **Details/Decisions:**
+  - **Bind Mounts over COPY:** Large datasets (`ai-core/`) are mounted into containers at runtime rather than copied into Docker images. This keeps image sizes manageable (~3GB for AI, ~200MB for API) vs. potentially 10GB+ if datasets were embedded.
+  - **Healthchecks:** PostgreSQL uses `pg_isready`, AI service uses Python `urllib` (curl not available in python-slim), API depends on both via `condition: service_healthy`.
+  - **Environment Variable Overrides:** `docker-compose.yml` sets `ConnectionStrings__DefaultConnection`, `AiService__BaseUrl`, `AiCore__ImagesDir`, `AiCore__GalleryIndexDir` to override `appsettings.json` with container-aware values.
+  - **JSON Integration Fix:** FastAPI returns nested JSON (`identification.is_known`, `identification.turtle_id`), but the original C# DTOs expected flat structure. Rewrote `AiServiceClient.IdentifyAsync` to use `System.Text.Json.JsonDocument` for direct node-level parsing.
+  - **.NET 10 Compatibility:** Initial Dockerfile used `.NET 8` SDK but the project targets `net10.0`. Updated to `mcr.microsoft.com/dotnet/sdk:10.0` and `aspnet:10.0`.
+  - **libgl1-mesa-glx deprecation:** Package removed from Debian Trixie. Replaced with `libgl1` in AI Dockerfile.
+* **Test Results:**
+  - `docker compose ps` → all 3 services running and healthy ✓
+  - `POST /api/v1/identify` (FastAPI direct, port 8000) → `t002` identified, score=1.0 ✓
+  - `POST /api/Identification/identify` (.NET via Docker, port 5000) → `t002` identified, score=1.0, encounter created ✓
+  - End-to-end flow: .NET → FastAPI → YOLO+ResNet+FAISS → Response → DB Write ✓
+* **Issues & Resolutions:**
+  - **Port conflict:** An orphan `dotnet run` process (PID 29912) was binding `localhost:5000` on the host, intercepting all requests before Docker could handle them. Diagnosed via `netstat -ano` and resolved with `Stop-Process`.
+  - **Container name conflict:** Previous standalone PostgreSQL container kept the `seaturtle-db` name. Resolved with `docker rm -f seaturtle-db`.
+  - **AI healthcheck failure:** `curl` not installed in `python:3.10-slim`. Changed healthcheck to `python -c "import urllib.request; urllib.request.urlopen(...)"`.
+
+---
+### [2026-05-05 22:05:00] — Antigravity / State Update
+* **Action/Task:** Updated `docs/specifications/state.md` and `docs/project_log.md` to reflect Phase 3.5 (Docker Compose Orchestration) completion.
+* **Files Affected:** `docs/specifications/state.md`, `docs/project_log.md`
+* **Details/Decisions:** Added Docker Quick Start section to state.md. Marked Phase 3.5 as complete. Next phase: Phase 4.0 (Frontend).
+* **Issues & Resolutions:** None.

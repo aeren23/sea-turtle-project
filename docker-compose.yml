@@ -1,0 +1,56 @@
+services:
+  seaturtle-db:
+    image: postgres:16-alpine
+    container_name: seaturtle-db
+    environment:
+      POSTGRES_DB: seaturtledb
+      POSTGRES_USER: turtle_admin
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-TurtleDev2026!}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U turtle_admin -d seaturtledb"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  seaturtle-ai:
+    build: 
+      context: .
+      dockerfile: ./ai-service/Dockerfile
+    container_name: seaturtle-ai
+    volumes:
+      - ./ai-core:/app/ai-core
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  seaturtle-api:
+    build:
+      context: .
+      dockerfile: ./backend/SeaTurtle.API/Dockerfile
+    container_name: seaturtle-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=seaturtle-db;Database=seaturtledb;Username=turtle_admin;Password=${DB_PASSWORD:-TurtleDev2026!}
+      - AiService__BaseUrl=http://seaturtle-ai:8000
+      - AiCore__ImagesDir=/app/ai-core/archiveu/turtles-data/data/images
+      - AiCore__GalleryIndexDir=/app/ai-core/gallery_index
+    volumes:
+      - ./ai-core:/app/ai-core # For serving static files and db seeding
+    ports:
+      - "5000:8080"
+    depends_on:
+      seaturtle-db:
+        condition: service_healthy
+      seaturtle-ai:
+        condition: service_healthy
+
+volumes:
+  pgdata:

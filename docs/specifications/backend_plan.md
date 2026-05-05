@@ -1,24 +1,30 @@
-# Phase 3: .NET Backend REST API — Revize Plan
+# Phase 3: .NET Backend REST API — İmplementasyon Planı
 
-## 1. Kritik Bulgu: Fotoğraf Saklama Sorunu
+**Son Güncelleme:** 2026-05-05
+**Durum:** Onay bekliyor
 
-> [!CAUTION]
-> **ai-service şu an fotoğrafları kalıcı olarak SAKLAMIYOR!**
-> - `POST /identify`: Fotoğrafı `tempfile` ile geçici diske yazar, inference sonrası **siler** (`Path(tmp_path).unlink`)
-> - `POST /register`: FAISS metadata'ya `image_path: "registered_via_api"` yazar — **gerçek dosya yolu yok**
-> - Mevcut veri seti yapısı: `ai-core/archiveu/turtles-data/data/images/tXXX/*.JPG` (her kaplumbağanın kendi klasörü)
+---
 
-### Çözüm: .NET Backend Fotoğraf Yönetimini Üstlenir
+## 1. Güncel Mimari Durum
 
-```
-Yeni fotoğraf geldiğinde:
-1. .NET → fotoğrafı ai-core/archiveu/turtles-data/data/images/tXXX/ altına kaydeder
-2. .NET → fotoğrafı ai-service'e forward eder (identify)
-3. ai-service → sadece inference yapar, dosya yönetimine karışmaz
-4. Register durumunda → .NET FAISS'e gerçek image_path ile kaydeder
-```
+### ✅ Çözülen Sorunlar
 
-Bu sayede **tüm fotoğraflar tek bir yerde** (dataset klasörü) tutulur ve FAISS metadata'daki `image_path` her zaman geçerli olur.
+| Sorun | Çözüm | Durum |
+|-------|-------|-------|
+| Fotoğraflar kalıcı saklanmıyordu | `ai-service/photo_storage.py` — `PhotoStorageService` oluşturuldu | ✅ Tamamlandı |
+| Register'da `image_path="registered_via_api"` yazılıyordu | Artık gerçek dosya yolu FAISS metadata'ya yazılıyor | ✅ Tamamlandı |
+| Bilinen kaplumbağa fotoğrafları kaybediliyordu | Bilinen → `images/tXXX/` kaydedilir, skor≥0.9 ise FAISS'e de eklenir | ✅ Tamamlandı |
+
+### ai-service Mevcut Endpoint'ler (Hazır)
+
+| Endpoint | Yaptığı İş |
+|----------|-----------|
+| `POST /api/v1/identify` | Fotoğraf → YOLO + ResNet + FAISS → tanımlama + fotoğraf kaydetme + galeri güncelleme |
+| `POST /api/v1/register` | session_id → yeni turtle_id + fotoğrafı `_staging/` → `images/tNNN/` taşıma + FAISS'e ekleme |
+| `GET /health` | Servis sağlık kontrolü |
+
+> [!NOTE]
+> **Fotoğraf yönetimi artık tamamen ai-service'de.** .NET backend fotoğraf dosyası kaydetmez, sadece ai-service'e forward eder ve dönen sonuçları DB'ye kaydeder. Fotoğrafları serve etmek için `StaticFiles` middleware ile `images/` dizinini expose eder.
 
 ---
 
@@ -33,12 +39,50 @@ Bu sayede **tüm fotoğraflar tek bir yerde** (dataset klasörü) tutulur ve FAI
 | Her kaplumbağa birden fazla fotoğraf | Evet (örn. t243: 71, t217: 65 fotoğraf) |
 | FAISS metadata alanları | `turtle_id`, `image_path`, `orientation`, `biological_side` |
 
-> [!IMPORTANT]
-> **TotalEncounters düzeltmesi:** Bir kaplumbağanın FAISS'te birden fazla vektörü var (farklı fotoğraflar, farklı açılar). Bu 1:N ilişkidir — her fotoğraf ayrı bir kayıttır.
+---
+
+## 3. Sistem Mimarisi
+
+```mermaid
+graph LR
+    subgraph Client["Frontend (ileride)"]
+        UI[Web UI / Swagger]
+    end
+
+    subgraph NET[".NET 8 Backend"]
+        API[REST Controllers]
+        SVC[Services]
+        DB[(PostgreSQL)]
+    end
+
+    subgraph AI["ai-service (FastAPI)"]
+        AIS[Identify + Register]
+        PS[PhotoStorageService]
+        FAISS[(FAISS Gallery)]
+        FS[images/tXXX/]
+    end
+
+    UI -->|HTTP| API
+    API --> SVC
+    SVC --> DB
+    SVC -->|HttpClient| AIS
+    AIS --> PS
+    PS --> FS
+    AIS --> FAISS
+    API -->|StaticFiles| FS
+```
+
+**Sorumluluk Dağılımı:**
+
+| Katman | Sorumluluk |
+|--------|-----------|
+| **.NET Backend** | Auth, kullanıcı yönetimi, DB (Turtle/Encounter/Photo kayıtları), iş kuralları, fotoğraf servis etme |
+| **ai-service** | AI inference, fotoğraf kaydetme/taşıma, FAISS vektör yönetimi, galeri güncelleme |
+| **PostgreSQL** | Kalıcı veri: kullanıcılar, kaplumbağalar, gözlemler, fotoğraf metadata'ları |
 
 ---
 
-## 3. Basit API Mimarisi (.NET 8)
+## 4. Basit API Mimarisi (.NET 8)
 
 Onion/Clean Architecture **kullanılmayacak**. Basit, katmanlı bir yapı:
 
@@ -56,8 +100,7 @@ backend/
 │   │   ├── ITurtleService.cs + TurtleService.cs
 │   │   ├── IEncounterService.cs + EncounterService.cs
 │   │   ├── IAuthService.cs + AuthService.cs
-│   │   ├── IAiServiceClient.cs + AiServiceClient.cs
-│   │   └── IPhotoStorageService.cs + PhotoStorageService.cs
+│   │   └── IAiServiceClient.cs + AiServiceClient.cs
 │   ├── Models/
 │   │   ├── Entities/          (User, Turtle, Encounter, Photo)
 │   │   ├── DTOs/              (Request/Response modelleri)
@@ -74,9 +117,12 @@ backend/
 └── SeaTurtle.API.sln
 ```
 
+> [!NOTE]
+> **PhotoStorageService .NET'te YOK** — fotoğraf kaydetme ai-service'in sorumluluğunda. .NET sadece `StaticFiles` ile dosyaları serve eder.
+
 ---
 
-## 4. Domain Entity'leri
+## 5. Domain Entity'leri
 
 ### Entity Relationship
 
@@ -120,6 +166,7 @@ erDiagram
         string Notes "nullable"
         float ConfidenceScore
         string BiologicalSide
+        bool GalleryUpdated
         DateTime CreatedAt
     }
 
@@ -127,23 +174,24 @@ erDiagram
         Guid Id PK
         Guid TurtleId FK
         Guid EncounterId FK "nullable"
-        string FilePath "ai-core dataset path"
+        string FilePath "ai-service saved path"
         string OriginalFileName
         long FileSizeBytes
         string ContentType
-        string Orientation "left/right/top"
+        string BiologicalSide "left/right/top"
         DateTime UploadedAt
     }
 ```
 
 > [!NOTE]
-> - **1 Turtle : N Photo** — Bir kaplumbağanın farklı açılardan çekilmiş birçok fotoğrafı olabilir (veri setindeki mevcut yapı)
+> - **1 Turtle : N Photo** — Bir kaplumbağanın farklı açılardan çekilmiş birçok fotoğrafı olabilir
 > - **1 Encounter : N Photo** — Bir gözlemde birden fazla fotoğraf çekilebilir
-> - **Photo.FilePath** → `ai-core/archiveu/turtles-data/data/images/tXXX/dosya.jpg` formatında — FAISS metadata ile tutarlı
+> - **Encounter.GalleryUpdated** — ai-service'in FAISS'e otomatik ekleme yapıp yapmadığını kaydeder
+> - **Photo.FilePath** → ai-service'in döndürdüğü `saved_photo_path` değeri (FAISS metadata ile tutarlı)
 
 ---
 
-## 5. API Endpoint'leri
+## 6. API Endpoint'leri
 
 ### Auth
 | Method | Endpoint | Açıklama |
@@ -155,8 +203,8 @@ erDiagram
 ### Identification (Ana Akış)
 | Method | Endpoint | Açıklama |
 |--------|----------|----------|
-| `POST` | `/api/identification/identify` | Fotoğraf yükle → ai-service'e gönder → sonuç al |
-| `POST` | `/api/identification/register` | Bilinmeyen kaplumbağayı kaydet (FAISS + DB + dosya) |
+| `POST` | `/api/identification/identify` | Fotoğraf yükle → ai-service'e forward → DB kaydı |
+| `POST` | `/api/identification/register` | Bilinmeyen kaplumbağayı kaydet (ai-service + DB) |
 
 ### Turtles
 | Method | Endpoint | Açıklama |
@@ -182,45 +230,83 @@ erDiagram
 
 ---
 
-## 6. Tanımlama Akışı (Detaylı)
+## 7. Tanımlama Akışı (Güncel)
 
 ```mermaid
 sequenceDiagram
     participant Client
-    participant NET as .NET API
-    participant AI as ai-service (FastAPI)
-    participant FS as Dosya Sistemi
+    participant NET as .NET Backend
+    participant AI as ai-service
     participant DB as PostgreSQL
 
     Client->>NET: POST /api/identification/identify (photo)
-    NET->>FS: Fotoğrafı images/temp/ altına kaydet
     NET->>AI: POST /api/v1/identify (forward photo)
-    AI-->>NET: {is_known, turtle_id, score, session_id?}
+
+    Note over AI: YOLO + ResNet + FAISS<br/>Fotoğrafı images/tXXX/ kaydeder<br/>Skor≥0.9 ise FAISS'e ekler
+
+    AI-->>NET: IdentifyResponse<br/>{is_known, turtle_id, score,<br/>saved_photo_path, gallery_updated,<br/>session_id?}
 
     alt Bilinen Kaplumbağa
-        NET->>FS: Fotoğrafı images/tXXX/ altına taşı
-        NET->>DB: Encounter + Photo kaydı oluştur
-        NET-->>Client: Turtle profili + skor
+        NET->>DB: Encounter kaydı oluştur
+        NET->>DB: Photo kaydı (saved_photo_path ile)
+        NET->>DB: Turtle.LastSeenAt güncelle
+        NET-->>Client: Turtle profili + skor + fotoğraf URL
     else Bilinmeyen Kaplumbağa
         NET-->>Client: session_id + "Kaydetmek ister misiniz?"
     end
 
     opt Kayıt Onayı
-        Client->>NET: POST /api/identification/register
+        Client->>NET: POST /api/identification/register (session_id, species?, nickname?)
         NET->>AI: POST /api/v1/register (session_id)
-        AI-->>NET: {turtle_id: "t611"}
-        NET->>FS: images/t611/ klasörü oluştur, fotoğrafı taşı
-        NET->>DB: Turtle + Encounter + Photo kayıtları
+
+        Note over AI: Fotoğrafı _staging → images/tNNN/<br/>FAISS'e embedding ekler
+
+        AI-->>NET: RegisterResponse {turtle_id: "t611"}
+        NET->>DB: Turtle kaydı oluştur (TurtleCode="t611")
+        NET->>DB: Encounter + Photo kayıtları
         NET-->>Client: Yeni kaplumbağa profili
     end
 ```
 
+### `IAiServiceClient` Interface
+
+```csharp
+public interface IAiServiceClient
+{
+    /// <summary>Forward photo to ai-service for identification.</summary>
+    Task<AiIdentifyResult> IdentifyAsync(Stream photoStream, string fileName);
+
+    /// <summary>Confirm registration of an unknown turtle.</summary>
+    Task<AiRegisterResult> RegisterAsync(string sessionId);
+
+    /// <summary>Check ai-service health.</summary>
+    Task<bool> HealthCheckAsync();
+}
+```
+
+### `AiIdentifyResult` DTO (.NET tarafı)
+
+```csharp
+public class AiIdentifyResult
+{
+    public bool Success { get; set; }
+    public bool IsKnown { get; set; }
+    public string? TurtleId { get; set; }
+    public float BestScore { get; set; }
+    public string BiologicalSide { get; set; }
+    public string? SessionId { get; set; }        // Bilinmeyen ise
+    public string? SavedPhotoPath { get; set; }   // ai-service'in kaydettiği yol
+    public bool GalleryUpdated { get; set; }      // FAISS'e eklendi mi?
+    public string? Error { get; set; }
+}
+```
+
 ---
 
-## 7. Docker Compose Yapısı
+## 8. Docker Compose Yapısı
 
 ```yaml
-# docker-compose.yml
+# docker-compose.yml (proje kökünde)
 services:
   postgres:
     image: postgres:16-alpine
@@ -232,17 +318,27 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U turtle_admin -d seaturtledb"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
-  # İleride eklenecek:
+  # İleride containerize edilecek:
   # ai-service:
   #   build: ./ai-service
   #   ports:
   #     - "8000:8000"
+  #   volumes:
+  #     - ./ai-core:/app/ai-core    # dataset + model paylaşımı
 
   # backend:
   #   build: ./backend
   #   ports:
   #     - "5000:5000"
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
 
 volumes:
   pgdata:
@@ -250,58 +346,67 @@ volumes:
 
 ---
 
-## 8. DB Seed Stratejisi
+## 9. DB Seed Stratejisi
 
-FAISS metadata'dan 438 kaplumbağa → PostgreSQL `Turtles` tablosuna seed:
+FAISS metadata'dan 438 kaplumbağa + 8,526 fotoğraf → PostgreSQL'e seed:
 
 ```
 1. meta_left.json + meta_right.json + meta_top.json okunur
-2. Unique turtle_id'ler çıkarılır (438 adet)
+2. Unique turtle_id'ler çıkarılır (438 adet, t001...t610)
 3. Her turtle_id için:
-   - Turtle kaydı oluşturulur (TurtleCode = "t001", FirstSeenAt = şimdi)
-   - İlişkili fotoğraflar Photo tablosuna eklenir (image_path mevcut)
-4. EF Core Migration + Seed Data olarak çalıştırılır
+   - Turtles tablosuna kayıt (TurtleCode, FirstSeenAt=now)
+4. Her FAISS metadata entry için:
+   - Photos tablosuna kayıt (FilePath=image_path, BiologicalSide, TurtleId FK)
+5. EF Core Migration + Seed Data olarak çalıştırılır
+```
+
+> [!NOTE]
+> Seed script'i bir kerelik çalışır. Seed verisi için `Encounter` kaydı oluşturulmaz — mevcut veri setindeki fotoğraflar tarihsel olarak girilen araştırmacı bilgisi içermez.
+
+---
+
+## 10. Fotoğraf Serve Etme
+
+```csharp
+// Program.cs — StaticFiles middleware
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(builder.Configuration["AiCore:ImagesDir"])
+    ),
+    RequestPath = "/photos"
+});
+```
+
+Bu sayede frontend'den fotoğrafa erişim:
+```
+GET /photos/t042/20260505_a3f7b2.jpg → dosya döner
 ```
 
 ---
 
-## 9. Open Questions
+## 11. İmplementasyon Sırası
 
-> [!IMPORTANT]
-> ### ai-service Fotoğraf Akışı Güncellenmeli mi?
-> Mevcut ai-service `register` endpoint'i fotoğrafı saklamıyor, sadece embedding'i FAISS'e ekliyor. İki seçenek:
-> - **A)** .NET backend fotoğraf yönetimini tamamen üstlenir, ai-service'e dokunulmaz
-> - **B)** ai-service güncellenir: register sırasında fotoğrafı `images/tXXX/` altına kaydeder
->
-> **Önerim: A** — .NET backend fotoğrafı önce kaydeder, sonra ai-service'i çağırır.
-
-> [!NOTE]
-> ### Fotoğraf Servisi
-> Kaplumbağa profil sayfasında görseller gösterilecekse, .NET'in bu dosyaları serve etmesi gerekir. `StaticFiles` middleware ile `ai-core/archiveu/.../images/` dizini expose edilebilir.
-
----
-
-## 10. İmplementasyon Sırası
-
-| # | Adım | Detay |
-|---|------|-------|
-| 1 | Docker Compose + PostgreSQL | DB ayağa kalk |
-| 2 | .NET Solution scaffold | Basit proje yapısı |
-| 3 | Entities + DbContext + Migration | EF Core |
-| 4 | Auth (JWT) | Login/Register/Me |
-| 5 | AiServiceClient | HttpClient → FastAPI |
-| 6 | PhotoStorageService | Dosya yönetimi (ai-core dataset ile tutarlı) |
-| 7 | IdentificationService + Controller | Ana iş akışı |
-| 8 | Turtle + Encounter CRUD | Servisler + Controller'lar |
-| 9 | Dashboard | İstatistik endpoint'leri |
-| 10 | DB Seed | FAISS metadata → PostgreSQL |
-| 11 | Test | xUnit testleri |
+| # | Adım | Detay | Bağımlılık |
+|---|------|-------|------------|
+| 1 | Docker Compose + PostgreSQL | DB ayağa kalk | — |
+| 2 | .NET Solution scaffold | Basit proje yapısı | — |
+| 3 | Entities + Enums | Domain modelleri | — |
+| 4 | DbContext + Configurations + Migration | EF Core setup | 3 |
+| 5 | Auth (JWT) | Login/Register/Me | 4 |
+| 6 | `AiServiceClient` | HttpClient → FastAPI | 4 |
+| 7 | `IdentificationService` + Controller | Ana iş akışı | 5, 6 |
+| 8 | Turtle + Encounter CRUD | Servisler + Controller'lar | 4 |
+| 9 | Dashboard endpoint'leri | İstatistikler | 8 |
+| 10 | Fotoğraf serve etme | StaticFiles middleware | 2 |
+| 11 | DB Seed | FAISS metadata → PostgreSQL | 4 |
+| 12 | Unit + Integration Tests | xUnit testleri | 7, 8 |
 
 ---
 
-## 11. Verification Plan
+## 12. Verification Plan
 
 - Swagger UI ile endpoint testleri
-- xUnit + WebApplicationFactory ile integration test
+- xUnit + `WebApplicationFactory` ile integration test
 - ai-service mock'lanarak izole test
-- Docker Compose ile full-stack smoke test
+- Docker Compose ile full-stack smoke test (PostgreSQL + ai-service + .NET)

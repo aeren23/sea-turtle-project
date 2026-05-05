@@ -1,0 +1,6 @@
+@SeaTurtle.API_HostAddress = http://localhost:5003
+
+GET {{SeaTurtle.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

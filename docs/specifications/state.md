@@ -4,117 +4,86 @@
 
 This document tracks the high-level progress, completed milestones, and current active phase of the SeaTurtle Photo-ID project. It is intended to provide immediate context to any AI Agent joining the workspace.
 
-## 🟢 Current Phase: Phase 3.0 — AI Microservice (FastAPI)
-**Status:** ✅ Completed
+## 🟢 Current Phase: Phase 4.0 — Web Platform (Frontend)
+**Status:** ⏳ Pending
 
-Exposed `TurtleInferencePipeline` as a standalone FastAPI microservice with REST endpoints for identification and registration.
-*   **Focus:** REST API wrapper around the AI pipeline + 2-phase registration flow for unknown turtles.
-*   **Architecture:** Standalone `ai-service/` module, imports `src.*` from `ai-core/` via `sys.path`. Pipeline loaded as singleton at startup.
-*   **Endpoints:**
-    *   `POST /api/v1/identify` — Upload photo → YOLO + ResNet + FAISS → identification result. Returns `session_id` for unknown turtles. Saves photos permanently.
-    *   `POST /api/v1/register` — Confirm registration of unknown turtle using `session_id`. Auto-generates `tNNN` ID, moves photo from staging, adds embedding to FAISS with real path.
-    *   `GET /health` — Service health check.
-*   **Completed Tasks:**
-    *   `ai-service/schemas.py`: Pydantic models — `DetectionResponse`, `IdentificationResponse`, `IdentifyResponse` (with `saved_photo_path`, `gallery_updated`), `RegisterRequest`, `RegisterResponse`, `HealthResponse`.
-    *   `ai-service/main.py`: FastAPI app with `lifespan` startup, session management, file validation, photo storage integration.
-    *   `ai-service/session_store.py`: In-memory session cache with 10-min TTL. Tracks `staged_photo_path`. Auto-deletes expired staging photos on cleanup.
-    *   `ai-service/photo_storage.py`: **[NEW]** `PhotoStorageService` — manages persistent photo storage in `images/tXXX/` (consistent with dataset structure), staging area for unknown turtles, expired staging cleanup.
-    *   `ai-service/id_generator.py`: Auto turtle ID generator — scans FAISS metadata for max `tNNN`, returns `t(NNN+1)`.
-    *   `ai-service/requirements.txt`: fastapi, uvicorn[standard], python-multipart.
-    *   `ai-service/README.md`: Quick start, endpoint docs, registration flow, architecture diagram.
-    *   `ai-core/src/inference/inference_pipeline.py`: Added `embedding` field to `InferenceResult` for registration caching.
-    *   `ai-core/src/config/data_config.py`: Added `AUTO_ADD_GALLERY_THRESHOLD` (0.9), `PHOTO_STAGING_DIR`, `STAGING_TTL_SECONDS`.
-*   **Photo Storage Strategy (v2):**
-    *   **Known turtle (score ≥ 0.6):** Photo saved to `images/tXXX/` permanently. If score ≥ 0.9, embedding auto-added to FAISS gallery.
-    *   **Unknown turtle:** Photo saved to `images/_staging/`, cached in session. On register → moved to `images/tNNN/`, embedding added to FAISS.
-    *   **Staging cleanup:** Expired staging photos deleted with session TTL (10 min).
-*   **Test Results:**
-    *   Health check: `{"status": "ok", "pipeline_loaded": true}`
-    *   `POST /api/v1/identify` with t001 photo → `is_known: true`, `turtle_id: "t001"`, `best_score: 0.986`
-    *   `POST /api/v1/register` with invalid session → correctly returns 404
-    *   Swagger UI auto-generated at `/docs`
-    *   36/36 ai-core unit tests passing (photo storage changes did not break any tests)
-
----
-
-## ✅ Phase 2.6 - Production Inference Pipeline (Completed)
-
-Built a fully autonomous inference pipeline that takes a raw turtle photograph and returns an identification result without any manual parameters (no `--bbox`, no `--side`).
-
-*   **Focus:** Automatic head detection + orientation classification via YOLOv8n, end-to-end inference orchestration.
-*   **Architecture:** Single YOLOv8-Nano model with 3 classes (`head_left`, `head_right`, `head_top`) performs both head detection and orientation classification in one forward pass.
-*   **Training Results (40 epochs, early stop):**
-    *   **mAP50 = 0.761**, mAP50-95 = 0.595, Precision = 0.655, Recall = 0.783
-    *   Head detection is strong (94–98% detection rate).
-    *   `head_top` classification: 74% accurate.
-    *   `head_left` ↔ `head_right` confusion: 31–42% cross-misclassification due to annotation inconsistency in source data.
-    *   Full training report: `docs/reports/phase2_6_yolo_head_detection.md`
-*   **Completed Tasks:**
-    *   `prepare_yolo_dataset.py`: COCO → YOLO format, no image copying (labels written alongside originals).
-    *   `train_yolo_detector.py`: YOLOv8n training, best weights saved to `runs/detect/turtle_head_detector/weights/best.pt`.
-    *   `HeadDetector` (`src/inference/head_detector.py`): YOLO model wrapper — detects head bbox + biological side + confidence.
-    *   `TurtleInferencePipeline` (`src/inference/inference_pipeline.py`): Orchestrates full flow: YOLO → preprocessing → embedding → FAISS search → `IdentificationResult`.
-    *   `infer_turtle.py`: CLI script — `python scripts/infer_turtle.py --image foto.jpg` (zero manual params).
-    *   Config: `YOLO_CHECKPOINT_PATH`, `YOLO_DATASET_DIR`, `YOLO_CLASS_NAMES`, `YOLO_CLASS_TO_SIDE` added to `data_config.py`.
-    *   `ultralytics>=8.0.0` added to `requirements.txt`.
-    *   **10 unit tests** covering HeadDetection DTO, detector init/edge cases, full pipeline orchestration.
-*   **Completed Post-Training:**
-    *   Fallback search strategy implemented (Option C — search all 3 FAISS indexes, return best overall match). Orientation classification noise fully absorbed.
-    *   `best.pt` auto-copied to `checkpoints/yolo_head_detector.pt` by training script.
-    *   End-to-end smoke test passed: t001 → 0.986 score, t042 → 0.979 score. Pipeline fully operational.
-    *   8/8 unit tests passing (including new fallback cross-index test).
+All backend infrastructure is fully containerized and orchestrated via Docker Compose. The entire system (PostgreSQL, FastAPI AI, .NET 10 API) boots with a single `docker compose up` command. The next major step is to build the frontend application for researchers.
+*   **Focus:** UI/UX, dashboards, photo upload interfaces, and API integration.
 
 ---
 
 ## ✅ Completed Phases
 
+### Phase 3.5: Docker Compose Orchestration
+**Status:** ✅ Completed (2026-05-05)
+*   **Goal:** Single-command deployment of the entire backend stack.
+*   **Services Orchestrated:**
+    *   `seaturtle-db` — PostgreSQL 16 Alpine with named volume (`pgdata`) and healthcheck.
+    *   `seaturtle-ai` — FastAPI AI microservice (YOLO + ResNet + FAISS) with Python 3.10-slim.
+    *   `seaturtle-api` — .NET 10 Web API with JWT auth, Swagger, and EF Core.
+*   **Bind Mounts:** `ai-core/` directory mounted into both AI and API containers to serve photos and seed the database without inflating Docker image sizes.
+*   **Networking:** Containers communicate via Docker internal DNS (`seaturtle-ai:8000`, `seaturtle-db:5432`). Environment variables override `appsettings.json` for container-aware configuration.
+*   **Dockerfiles Created:**
+    *   `ai-service/Dockerfile` — Multi-step Python build with PyTorch, FAISS, OpenCV, Ultralytics.
+    *   `backend/SeaTurtle.API/Dockerfile` — Multi-stage .NET 10 SDK build + ASP.NET runtime.
+*   **Key Files:** `docker-compose.yml`, `.dockerignore`, `ai-service/Dockerfile`, `backend/SeaTurtle.API/Dockerfile`
+*   **Healthchecks:** PostgreSQL uses `pg_isready`, AI service uses Python `urllib` (curl not available in slim image).
+*   **JSON Integration Fix:** `AiServiceClient.cs` rewritten to use `JsonDocument` for direct JSON node parsing of FastAPI's nested response structure (`identification.is_known`, `identification.turtle_id`, etc.).
+*   **Critical Issue Resolved:** Host-machine .NET debug process was binding `localhost:5000` and intercepting requests meant for the Docker container. Resolved by stopping the orphan process.
+
+### Phase 3.0: Backend & Web Platform (.NET 10 API)
+**Status:** ✅ Completed
+*   **Infrastructure:** Docker Compose with PostgreSQL. Entity Framework Core used for ORM and migrations.
+*   **Security:** JWT Authentication and Role-based authorization implemented.
+*   **AI Integration:** `IAiServiceClient` added to bridge the .NET backend with the FastAPI microservice.
+*   **CRUD & Business Logic:** Identification, Encounter, and Turtle services implemented.
+*   **Database Seeding:** `DbSeeder` implemented to parse FAISS metadata JSONs and seed 438 turtles + photos automatically.
+*   **Static Files:** `StaticFiles` middleware configured to serve photos directly from the AI dataset path.
+*   **Swagger/OpenAPI:** `Swashbuckle.AspNetCore` (6.5.0) integrated with JWT Bearer authorization flow.
+
+### Phase 2.6: Production Inference Pipeline & Microservice (FastAPI)
+**Status:** ✅ Completed
+*   **Microservice:** FastAPI wrapper (`ai-service/main.py`) handling `/identify` and `/register` endpoints.
+*   **Photo Storage Strategy (v2):** 
+    *   Known turtles saved to `images/tXXX/`.
+    *   Unknown turtles stored in `images/_staging/` with a 10-minute session TTL.
+*   **Autonomous Pipeline:** YOLOv8n head detector and orientation classifier integrated into an end-to-end inference flow without manual parameters.
+
 ### Phase 2.5: Embedding Gallery & FAISS Vector Store
-**Status:** Completed
+**Status:** ✅ Completed
+*   Extracted embeddings and built 3 separate FAISS `IndexFlatIP` indexes (left, right, top).
+*   CLI tools built for gallery construction and query services.
 
-Built the full identification pipeline that converts all preprocessed turtle images into 512-d embeddings and stores them in a FAISS-based vector database for nearest-neighbour identity matching.
-*   **Focus:** Gallery construction, per-side FAISS indexing, identification service.
-*   **Completed Tasks:**
-    *   `EmbeddingExtractor` (`src/identification/embedding_extractor.py`): Loads trained checkpoint, extracts 512-d embeddings with defensive L2 normalization guarantee (`F.normalize`).
-    *   `TurtleVectorStore` (`src/identification/vector_store.py`): Manages **3 separate FAISS `IndexFlatIP` indexes** (left, right, top) to prevent cross-side noise. Each index paired with a JSON metadata file.
-    *   `GalleryBuilder` (`src/identification/gallery_builder.py`): Orchestrates full dataset → preprocess → embed → FAISS insertion pipeline with progress tracking.
-    *   `TurtleIdentifier` (`src/identification/identifier.py`): Query service with configurable similarity threshold. Reports "Unknown Individual" for sub-threshold matches. Requires manual `biological_side` parameter (no auto-classifier yet).
-    *   CLI scripts: `scripts/build_gallery.py` (builds 3 FAISS indexes) and `scripts/identify_turtle.py` (query with `--image` + `--side`).
-    *   Config updated: `EMBEDDING_DIM`, `FAISS_INDEX_DIR`, `BIOLOGICAL_SIDES`, `IDENTIFICATION_THRESHOLD`, `TOP_K_RESULTS`, `CHECKPOINT_PATH` added to `data_config.py`.
-    *   **18 unit/integration tests** all passing: vector store CRUD, L2 norm guarantee, cross-side isolation, persistence, identification pipeline.
+### Phase 2.0: Deep Learning Implementation (Metric Learning)
+**Status:** ✅ Completed
+*   ResNet-50 backbone modified for metric learning with 512-d embeddings.
+*   Trained using ArcFace Loss and Albumentations augmentations.
+*   Best model saved to `checkpoints/best_turtle_resnet.pth`.
 
-### Phase 2: Deep Learning Implementation
-**Status:** Completed
-
-The PyTorch training pipeline for the CNN is fully built and recently refactored in **Phase A** to resolve embedding collapse and poor evaluation metrics (mAP ~2%).
-*   **Focus:** Metric Learning (Open-Set Identification).
-*   **Completed Tasks:**
-    *   `pytorch-metric-learning` initially implemented with Triplet Margin Loss, later upgraded to **ArcFace Loss** to eliminate the need for complex hard-negative mining (like MPerClassSampler) and provide stronger decision boundaries.
-    *   Virtual Identities refactored: Mapped 7 orientation types to **3 biological sides** (left, right, top) to preserve biological asymmetry while improving samples-per-class ratio.
-    *   Learning Rate Scheduler (`CosineAnnealingWarmRestarts`) with linear warmup added to `train.py`.
-    *   Advanced data augmentations (Scale variation, GridDistortion, GaussianBlur, CoarseDropout) implemented via Albumentations to simulate harsh underwater conditions.
-    *   Full 20-Epoch training loop executed on GPU, best model saved to `checkpoints/best_turtle_resnet.pth`.
-    *   OpenCV `cv::OutOfMemoryError` fixed during evaluation loop by moving Resize step earlier and optimizing memory allocations in `filters.py`.
-
-### Phase 1: Architecture Planning & Data Pipeline
-**Status:** Completed
-*   **CrewAI Research:** Multi-agent system (Data Researcher, CV Researcher, DL Strategist) successfully analyzed the ~600 image dataset and recommended technical approaches.
-*   **Biological Constraints Resolved:** Discovered that Sea Turtle post-ocular scales are asymmetrical. **Decision:** Banned "Horizontal Flip" from data augmentation to prevent "ghost turtle" creation.
-*   **Preprocessing Pipeline:** OpenCV pipeline built (`src/preprocessing/pipeline.py`). Successfully crops BBox, applies CLAHE (illumination balance), color corrects the cyan underwater shift, and resizes to 224x224. Verified visually via `preprocessing_results.png`.
-*   **Data Dataset & Parsers:** PyTorch Dataset (`src/data/turtle_dataset.py`) built. It lazily loads images, applies the OpenCV preprocessing, and converts to tensors.
-*   **Data Augmentation:** Albumentations integrated (`src/data/augmentation.py`) using Rotation, Color Jitter, and Elastic Deformation.
-*   **Model Backbone:** `src/models/turtle_resnet.py` built. Stripped the Softmax layer from ResNet-50 and replaced it with a 512-d L2-Normalized Embedding head for Metric Learning.
+### Phase 1.0: Architecture Planning & Data Pipeline
+**Status:** ✅ Completed
+*   CrewAI agents analyzed the dataset.
+*   OpenCV pipeline built for CLAHE, color correction, and resizing.
+*   PyTorch Dataset implemented.
 
 ---
 
-## ⏳ Upcoming Phases
+## 🐳 Docker Quick Start
 
-### Phase 3: Web Platform & Backend Integration (Clean Architecture)
-*   **Tech Stack:** .NET 8 RESTful API + FastAPI Python microservice.
-*   **Goal:** Build the web service where users/researchers can upload photos, register new turtles, or query existing ones.
-*   **Integration:** The TurtleInferencePipeline will be exposed via FastAPI as a standalone microservice that the .NET backend communicates with.
+```bash
+# Boot the entire system (first run downloads ~2GB of dependencies)
+docker compose up -d --build
 
-### Phase 4: Frontend Development
-*   **Goal:** A visually stunning, dynamic UI for DEKAMER researchers to interact with the system.
+# Verify all 3 services are healthy
+docker compose ps
+
+# Access points:
+#   .NET API (Swagger): http://localhost:5000/swagger
+#   FastAPI AI (Docs):   http://localhost:8000/docs
+#   PostgreSQL:          localhost:5432
+```
+
+> **⚠️ Important:** Before running `docker compose up`, ensure no local .NET process is occupying port 5000. Use `netstat -ano | Select-String ":5000"` (Windows) to check.
 
 ---
 **Note to AI Agents:** When undertaking new tasks, strictly adhere to the standards outlined in `docs/rules/coding_standards.md` and log your major decisions in `docs/project_log.md` using the Python `log_writer` utility.
