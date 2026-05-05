@@ -1,6 +1,6 @@
 # SeaTurtle Photo-ID: Project State & History
 
-**Last Updated:** 2026-05-05
+**Last Updated:** 2026-05-05 (Master Chronicle created)
 
 This document tracks the high-level progress, completed milestones, and current active phase of the SeaTurtle Photo-ID project. It is intended to provide immediate context to any AI Agent joining the workspace.
 
