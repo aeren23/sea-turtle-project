@@ -8,7 +8,7 @@ Flow:
     Raw Photo → HeadDetector (YOLO) → Preprocessing → EmbeddingExtractor → FAISS Search → Result
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import cv2
@@ -36,6 +36,7 @@ class InferenceResult:
     detection: HeadDetection | None
     identification: IdentificationResult | None
     error: str | None
+    embedding: np.ndarray | None = field(default=None, repr=False)
 
 
 class TurtleInferencePipeline:
@@ -171,4 +172,5 @@ class TurtleInferencePipeline:
             detection=detection,
             identification=identification,
             error=None,
+            embedding=embedding,
         )

@@ -623,3 +623,54 @@ The development of **Module A (Head Detection)** is the first and essential step
     - Top-5 separation strong (2nd best ~0.53 vs 1st ~0.98).
   - **Tests:** 8/8 passing including new cross-index fallback test.
 * **Issues & Resolutions:** None — implementation clean, no unexpected failures.
+
+---
+
+### Log Entry — 2026-05-05 17:40
+
+* **Phase:** 3.0 — FastAPI AI Microservice
+* **Action:** Implemented standalone FastAPI microservice wrapping TurtleInferencePipeline.
+* **Files Created:**
+  - `ai-service/main.py` (FastAPI app, lifespan startup, POST /api/v1/identify, GET /health, CORS)
+  - `ai-service/schemas.py` (DetectionResponse, IdentificationResponse, IdentifyResponse, HealthResponse)
+  - `ai-service/requirements.txt` (fastapi, uvicorn[standard], python-multipart)
+  - `ai-service/README.md` (quick start, endpoint docs, architecture diagram)
+* **Details/Decisions:**
+  - **Singleton pattern:** Pipeline loaded once at startup via FastAPI `lifespan` event. All requests share the same YOLO + ResNet + FAISS instance.
+  - **File handling:** Upload → temp file (suffix preserved) → `pipeline.run(tmp_path)` → cleanup in `finally` block.
+  - **Validation:** Extension whitelist (jpg/jpeg/png/bmp/tiff/webp), 20 MB max → 400/413 HTTP errors.
+  - **CORS:** `allow_origins=["*"]` for dev — restrict in production.
+  - **Import strategy:** `AI_CORE_DIR` inserted into `sys.path` at module load — no pip install of ai-core needed.
+* **Test Results:**
+  - Health: `{"status": "ok", "pipeline_loaded": true}` ✓
+  - POST /api/v1/identify with t001 photo → `is_known: true`, `turtle_id: "t001"`, `best_score: 0.986` ✓
+  - Swagger UI auto-generated at /docs ✓
+* **Issues & Resolutions:**
+  - Port 8000 collision with previous process → switched to port 8001 for testing.
+
+---
+
+### Log Entry — 2026-05-05 18:10
+
+* **Phase:** 3.0 — Turtle Registration Flow
+* **Action:** Implemented 2-phase registration flow (identify → confirm → register) for unknown turtles.
+* **Files Created:**
+  - `ai-service/session_store.py` (in-memory PendingRegistration cache, 10-min TTL, lazy expiry cleanup)
+  - `ai-service/id_generator.py` (scans FAISS metadata for max tNNN, returns t(NNN+1))
+* **Files Modified:**
+  - `ai-service/schemas.py` (added RegisterRequest, RegisterResponse, session_id field on IdentifyResponse)
+  - `ai-service/main.py` (session caching on UNKNOWN result, POST /api/v1/register endpoint)
+  - `ai-service/README.md` (registration flow docs, updated architecture diagram)
+  - `ai-core/src/inference/inference_pipeline.py` (added `embedding` field to InferenceResult dataclass)
+  - `docs/specifications/state.md` (updated Phase 3.0 with registration details)
+* **Details/Decisions:**
+  - **2-phase flow:** identify returns session_id → client confirms → register creates new turtle in FAISS.
+  - **Auto-ID:** `generate_next_turtle_id()` scans all 3 FAISS index metadata files for max tNNN.
+  - **FAISS index selection:** Register only in the YOLO-predicted side's index (not all 3) to avoid cross-side pollution.
+  - **Session store:** In-memory dict, cleaned lazily, 10-min TTL. Server restart = sessions lost (acceptable for MVP).
+  - **InferenceResult.embedding:** New optional field (repr=False) — zero impact on existing consumers, enables registration caching.
+* **Test Results:**
+  - identify known t001 → correct ✓
+  - register with invalid session → 404 ✓
+  - 8/8 ai-core unit tests passing ✓
+* **Issues & Resolutions:** None.

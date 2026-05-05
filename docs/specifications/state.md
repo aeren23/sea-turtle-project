@@ -4,10 +4,37 @@
 
 This document tracks the high-level progress, completed milestones, and current active phase of the SeaTurtle Photo-ID project. It is intended to provide immediate context to any AI Agent joining the workspace.
 
-## 🟢 Current Phase: Phase 2.6 - Production Inference Pipeline
+## 🟢 Current Phase: Phase 3.0 — AI Microservice (FastAPI)
 **Status:** ✅ Completed
 
+Exposed `TurtleInferencePipeline` as a standalone FastAPI microservice with REST endpoints for identification and registration.
+*   **Focus:** REST API wrapper around the AI pipeline + 2-phase registration flow for unknown turtles.
+*   **Architecture:** Standalone `ai-service/` module, imports `src.*` from `ai-core/` via `sys.path`. Pipeline loaded as singleton at startup.
+*   **Endpoints:**
+    *   `POST /api/v1/identify` — Upload photo → YOLO + ResNet + FAISS → identification result. Returns `session_id` for unknown turtles.
+    *   `POST /api/v1/register` — Confirm registration of unknown turtle using `session_id`. Auto-generates `tNNN` ID, adds embedding to FAISS, saves to disk.
+    *   `GET /health` — Service health check.
+*   **Completed Tasks:**
+    *   `ai-service/schemas.py`: Pydantic models — `DetectionResponse`, `IdentificationResponse`, `IdentifyResponse`, `RegisterRequest`, `RegisterResponse`, `HealthResponse`.
+    *   `ai-service/main.py`: FastAPI app with `lifespan` startup, session management, file validation.
+    *   `ai-service/session_store.py`: In-memory session cache with 10-min TTL for pending registrations.
+    *   `ai-service/id_generator.py`: Auto turtle ID generator — scans FAISS metadata for max `tNNN`, returns `t(NNN+1)`.
+    *   `ai-service/requirements.txt`: fastapi, uvicorn[standard], python-multipart.
+    *   `ai-service/README.md`: Quick start, endpoint docs, registration flow, architecture diagram.
+    *   `ai-core/src/inference/inference_pipeline.py`: Added `embedding` field to `InferenceResult` for registration caching.
+*   **Test Results:**
+    *   Health check: `{"status": "ok", "pipeline_loaded": true}`
+    *   `POST /api/v1/identify` with t001 photo → `is_known: true`, `turtle_id: "t001"`, `best_score: 0.986`
+    *   `POST /api/v1/register` with invalid session → correctly returns 404
+    *   Swagger UI auto-generated at `/docs`
+    *   8/8 ai-core unit tests still passing
+
+---
+
+## ✅ Phase 2.6 - Production Inference Pipeline (Completed)
+
 Built a fully autonomous inference pipeline that takes a raw turtle photograph and returns an identification result without any manual parameters (no `--bbox`, no `--side`).
+
 *   **Focus:** Automatic head detection + orientation classification via YOLOv8n, end-to-end inference orchestration.
 *   **Architecture:** Single YOLOv8-Nano model with 3 classes (`head_left`, `head_right`, `head_top`) performs both head detection and orientation classification in one forward pass.
 *   **Training Results (40 epochs, early stop):**
