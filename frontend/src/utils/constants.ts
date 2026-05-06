@@ -8,8 +8,8 @@ export const CONFIDENCE_HIGH_THRESHOLD = 0.80;
 export const CONFIDENCE_MID_THRESHOLD  = 0.60;
 
 // Pagination defaults
-export const DEFAULT_PAGE_SIZE = 24;
-export const ENCOUNTER_PAGE_SIZE = 50;
+export const DEFAULT_PAGE_SIZE = 12;
+export const ENCOUNTER_PAGE_SIZE = 15;
 
 // Species list (from project spec)
 export const TURTLE_SPECIES = [

@@ -53,7 +53,7 @@ public class DashboardController : ControllerBase
                 ConfidenceScore = e.ConfidenceScore,
                 BiologicalSide = e.BiologicalSide,
                 GalleryUpdated = e.GalleryUpdated,
-                PhotoUrls = e.Photos.Select(p => $"/photos/{e.Turtle!.TurtleCode}/{Path.GetFileName(p.FilePath)}").ToList()
+                PhotoUrls = e.Photos.Select(p => $"/photos/{e.Turtle!.TurtleCode}/{Path.GetFileName(p.FilePath.Replace('\\', '/'))}").ToList()
             })
             .ToListAsync();
 

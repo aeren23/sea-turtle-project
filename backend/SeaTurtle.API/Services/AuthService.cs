@@ -2,22 +2,24 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SeaTurtle.API.Data;
 using SeaTurtle.API.Models.DTOs.Auth;
 using SeaTurtle.API.Models.Entities;
+using SeaTurtle.API.Models.Settings;
 
 namespace SeaTurtle.API.Services;
 
 public class AuthService : IAuthService
 {
     private readonly AppDbContext _context;
-    private readonly IConfiguration _config;
+    private readonly JwtSettings _jwtSettings;
 
-    public AuthService(AppDbContext context, IConfiguration config)
+    public AuthService(AppDbContext context, IOptions<JwtSettings> jwtOptions)
     {
         _context = context;
-        _config = config;
+        _jwtSettings = jwtOptions.Value;
     }
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
@@ -66,7 +68,7 @@ public class AuthService : IAuthService
     private AuthResponse GenerateAuthResponse(User user)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? "super_secret_key_needs_to_be_long_enough_for_hmacsha256");
+        var key = Encoding.UTF8.GetBytes(_jwtSettings.Key);
 
         var claims = new List<Claim>
         {
@@ -78,10 +80,10 @@ public class AuthService : IAuthService
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddDays(7),
+            Expires = DateTime.UtcNow.AddDays(_jwtSettings.ExpirationDays),
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
-            Issuer = _config["Jwt:Issuer"] ?? "SeaTurtleAPI",
-            Audience = _config["Jwt:Audience"] ?? "SeaTurtleClient"
+            Issuer = _jwtSettings.Issuer,
+            Audience = _jwtSettings.Audience
         };
 
         var token = tokenHandler.CreateToken(tokenDescriptor);
@@ -99,3 +101,4 @@ public class AuthService : IAuthService
         };
     }
 }
+

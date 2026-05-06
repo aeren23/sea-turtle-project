@@ -64,6 +64,18 @@ public class AiServiceClient : IAiServiceClient
                 biologicalSide = dbs.GetString() ?? "unknown";
             }
 
+            float[]? bbox = null;
+            if (detection?.TryGetProperty("bbox", out var bboxElem) == true && bboxElem.ValueKind == JsonValueKind.Array)
+            {
+                bbox = bboxElem.EnumerateArray().Select(e => (float)e.GetDouble()).ToArray();
+            }
+
+            float? detectionConfidence = null;
+            if (detection?.TryGetProperty("confidence", out var confElem) == true && confElem.ValueKind != JsonValueKind.Null)
+            {
+                detectionConfidence = (float)confElem.GetDouble();
+            }
+
             string? sessionId = root.TryGetProperty("session_id", out var sid) && sid.ValueKind != JsonValueKind.Null ? sid.GetString() : null;
             string? savedPhotoPath = root.TryGetProperty("saved_photo_path", out var spp) && spp.ValueKind != JsonValueKind.Null ? spp.GetString() : null;
             bool galleryUpdated = root.TryGetProperty("gallery_updated", out var gu) && gu.ValueKind != JsonValueKind.Null && gu.GetBoolean();
@@ -77,7 +89,9 @@ public class AiServiceClient : IAiServiceClient
                 BiologicalSide = biologicalSide,
                 SessionId = sessionId,
                 SavedPhotoPath = savedPhotoPath,
-                GalleryUpdated = galleryUpdated
+                GalleryUpdated = galleryUpdated,
+                BoundingBox = bbox,
+                DetectionConfidence = detectionConfidence
             };
         }
         catch (Exception ex)
@@ -91,8 +105,9 @@ public class AiServiceClient : IAiServiceClient
     {
         try
         {
-            var url = $"/api/v1/register?session_id={Uri.EscapeDataString(sessionId)}";
-            var response = await _httpClient.PostAsync(url, null); // Empty POST
+            var requestBody = new { session_id = sessionId };
+            var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("/api/v1/register", content);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -105,7 +120,7 @@ public class AiServiceClient : IAiServiceClient
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             var result = JsonSerializer.Deserialize<AiRegisterResponse>(resultStr, options);
 
-            if (result == null || result.status != "success")
+            if (result == null || !result.success)
             {
                 return new AiRegisterResult { Success = false, Error = "Failed to parse AI service response." };
             }
@@ -113,7 +128,8 @@ public class AiServiceClient : IAiServiceClient
             return new AiRegisterResult
             {
                 Success = true,
-                TurtleId = result.turtle_id
+                TurtleId = result.turtle_id,
+                SavedPhotoPath = result.saved_photo_path
             };
         }
         catch (Exception ex)
@@ -158,12 +174,15 @@ public class AiServiceClient : IAiServiceClient
         public class DetectionObj
         {
             public string? biological_side { get; set; }
+            public float[]? bbox { get; set; }
+            public float? confidence { get; set; }
         }
     }
 
     public class AiRegisterResponse
     {
-        public string? status { get; set; }
+        public bool success { get; set; }
         public string? turtle_id { get; set; }
+        public string? saved_photo_path { get; set; }
     }
 }

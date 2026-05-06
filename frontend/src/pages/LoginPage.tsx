@@ -8,17 +8,17 @@ import SonarRing from '../components/SonarRing';
 import './LoginPage.css';
 
 const loginSchema = z.object({
-  email:    z.string().email('Enter a valid email address'),
+  email: z.string().email('Enter a valid email address'),
   password: z.string().min(1, 'Password is required'),
 });
 
 const registerSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
-  email:    z.string().email('Enter a valid email address'),
+  email: z.string().email('Enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-type LoginFormData    = z.infer<typeof loginSchema>;
+type LoginFormData = z.infer<typeof loginSchema>;
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 /**
@@ -27,7 +27,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
  * Toggles between login and register mode.
  */
 const LoginPage: React.FC = () => {
-  const [mode, setMode]       = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const { login, register, isLoading } = useAuth();
 
   const isRegister = mode === 'register';
@@ -62,7 +62,7 @@ const LoginPage: React.FC = () => {
           <div className="login-page__sonar-wrap">
             <SonarRing size={200} rings={4} />
           </div>
-          <h1 className="login-page__brand">SeaTurtle<br/>Photo-ID</h1>
+          <h1 className="login-page__brand">SeaTurtle<br />Photo-ID</h1>
           <p className="login-page__tagline">
             Biometric identification system for<br />
             <em>Chelonia mydas</em> &amp; <em>Caretta caretta</em>
@@ -173,7 +173,7 @@ const LoginPage: React.FC = () => {
           {/* Default creds hint (dev convenience) */}
           {!isRegister && (
             <p className="login-page__hint">
-              Default: <code>admin@seaturtle.org</code> / <code>Admin1234!</code>
+              Default: <code>admin@seaturtle.org</code> / <code>Admin123!</code>
             </p>
           )}
         </div>

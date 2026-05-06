@@ -24,10 +24,10 @@ public class TurtlesController : ControllerBase
         return Ok(turtles);
     }
 
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<TurtleDto>> GetById(Guid id)
+    [HttpGet("{identifier}")]
+    public async Task<ActionResult<TurtleDto>> GetById(string identifier)
     {
-        var turtle = await _turtleService.GetTurtleByIdAsync(id);
+        var turtle = await _turtleService.GetTurtleByIdAsync(identifier);
         
         if (turtle == null) return NotFound();
 

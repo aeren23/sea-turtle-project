@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SeaTurtle.API.Data;
+using SeaTurtle.API.Models.Settings;
 using SeaTurtle.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +16,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Increase MaxRequestBodySize for uploading high-resolution photos
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = UploadSettings.MaxPhotoUploadBytes;
+});
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.ValueLengthLimit = int.MaxValue;
+    options.MultipartBodyLengthLimit = UploadSettings.MaxPhotoUploadBytes;
+    options.MultipartHeadersLengthLimit = int.MaxValue;
+});
+
+// JWT Settings — bind from appsettings.json and register for DI
+var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
+    ?? throw new InvalidOperationException("JWT configuration section 'Jwt' is missing from appsettings.json.");
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
+
 // Authentication & JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -25,10 +43,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "SeaTurtleAPI",
-            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "SeaTurtleClient",
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "super_secret_key_needs_to_be_long_enough_for_hmacsha256"))
+                Encoding.UTF8.GetBytes(jwtSettings.Key))
         };
     });
 

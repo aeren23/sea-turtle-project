@@ -12,14 +12,20 @@ export interface IdentificationResponse {
   species:        string | null;
   nickname:       string | null;
   photoUrl:       string | null;
+  encounterId:    string | null;
+  boundingBox?:   number[];
+  detectionConfidence?: number;
 }
 
 /** Request body for POST /api/Identification/register */
 export interface RegisterUnknownRequest {
-  sessionId:         string;
-  species:           string | null;
-  nickname:          string | null;
-  firstSeenLocation: string | null;
+  sessionId:      string;
+  species:        string | null;
+  nickname:       string | null;
+  locationName:   string | null;
+  notes:          string | null;
+  score:          number;
+  biologicalSide: string;
 }
 
 /** Dashboard statistics from GET /api/Dashboard/stats */

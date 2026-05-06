@@ -9,4 +9,7 @@ public class UpdateTurtleRequest
 
     [MaxLength(100)]
     public string? Nickname { get; set; }
+
+    [MaxLength(500)]
+    public string? FirstSeenLocation { get; set; }
 }

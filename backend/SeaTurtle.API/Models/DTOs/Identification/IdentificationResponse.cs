@@ -12,4 +12,9 @@ public class IdentificationResponse
     public string? Species { get; set; }
     public string? Nickname { get; set; }
     public string? PhotoUrl { get; set; }
+    public Guid? EncounterId { get; set; }
+
+    // Detection details
+    public float[]? BoundingBox { get; set; }
+    public float? DetectionConfidence { get; set; }
 }

@@ -135,13 +135,13 @@ const TurtleDetailPage: React.FC = () => {
             )}
           </div>
 
-          {/* Admin actions */}
-          {isAdmin() && (
-            <div className="turtle-detail__admin-actions">
-              <button className="btn btn--ghost" onClick={openEdit}>✎ Edit Profile</button>
+          {/* Actions */}
+          <div className="turtle-detail__admin-actions">
+            <button className="btn btn--ghost" onClick={openEdit}>✎ Edit Profile</button>
+            {isAdmin() && (
               <button className="btn btn--danger" onClick={() => setDeleteOpen(true)}>✕ Delete</button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </section>
 
@@ -221,16 +221,19 @@ const TurtleDetailPage: React.FC = () => {
         <div className="turtle-detail__edit-form">
           <div className="field">
             <label className="field__label" htmlFor="edit-species">Species</label>
-            <select
+            <input
               id="edit-species"
               className="field__input"
+              list="edit-species-list"
               value={editSpecies}
               onChange={(e) => setEditSpecies(e.target.value)}
-            >
+              placeholder="e.g. Caretta caretta"
+            />
+            <datalist id="edit-species-list">
               {TURTLE_SPECIES.map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
               ))}
-            </select>
+            </datalist>
           </div>
           <div className="field">
             <label className="field__label" htmlFor="edit-nickname">Nickname</label>

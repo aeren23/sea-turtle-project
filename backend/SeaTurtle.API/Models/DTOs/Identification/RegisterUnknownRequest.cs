@@ -21,4 +21,9 @@ public class RegisterUnknownRequest
 
     [MaxLength(2000)]
     public string? Notes { get; set; }
+
+    public float Score { get; set; }
+    
+    [MaxLength(50)]
+    public string BiologicalSide { get; set; } = string.Empty;
 }

@@ -747,3 +747,28 @@ The development of **Module A (Head Detection)** is the first and essential step
 * **Files Affected:** `docs/reports/AI_Phase_Master_Chronicle.md`, `docs/specifications/state.md`, `docs/project_log.md`
 * **Details/Decisions:** Authored a detailed, chronological engineering narrative documenting the entire AI R&D journey. Report includes: 8 Architectural Decision Records (ADRs), multi-agent CrewAI debate excerpts (blockquoted), embedded visual evidence (YOLO confusion matrix, training curves, fallback demo images), and quantitative comparisons (Baseline vs ArcFace metrics). The report is structured for a technical academic jury and follows the Problem → Agent Debate → Solution → Visual Evidence pattern.
 * **Issues & Resolutions:** None
+
+## 2026-05-06 - Species Flex & Encounter Details
+- Converted Species dropdowns to datalists for free-text input.
+- Added Encounter Update modal to Identification workflow for Known turtles.
+
+---
+### [2026-05-06 04:17:00] — Antigravity / Technical Writing
+* **Action/Task:** Finalized the ProjectReport.md Master Chronicle with backend/frontend sections and image fixes.
+* **Files Affected:** `ProjectReport.md`, `docs/specifications/state.md`, `docs/project_log.md`
+* **Details/Decisions:** (1) Fixed all broken image paths (assets/ → docs/reports/assets/) after report file was moved to project root. (2) Inserted preprocessing_results.png in Section 2.2 with caption. (3) Added Phase 3.0 section covering FastAPI microservice, .NET 10 API endpoints, Docker Compose orchestration diagram, and end-to-end integration tests. (4) Added Phase 4.0 section documenting the Bioluminescent Field Station frontend with 3 embedded screenshots (head_detect.png, turtle_detail.png, encounters.png). (5) Renumbered Appendix from §7 to §9.
+* **Issues & Resolutions:** None
+
+---
+### [2026-05-06 04:23:00] — Antigravity / Technical Writing
+* **Action/Task:** Created professional GitHub README.md for the SeaTurtle Photo-ID project.
+* **Files Affected:** `README.md`, `docs/specifications/state.md`, `docs/project_log.md`
+* **Details/Decisions:** Created a comprehensive, English-language README with: hero image (head_detect.png), shield.io badges (7 tech + license), 3 frontend screenshots in HTML table, ASCII architecture diagrams (pipeline + Docker), Quick Start guide, API reference tables (7 .NET + 3 FastAPI endpoints), AI Pipeline section with preprocessing image and metrics, full project tree, tech stack table, documentation links, contributing guidelines (with biological asymmetry warning), and Academic Use Only license section.
+* **Issues & Resolutions:** None
+
+---
+### [2026-05-06 04:40:00] — Antigravity / Refactoring + Documentation
+* **Action/Task:** Fixed Critical/High SOLID violations and created comprehensive SOLID & Clean Code compliance report.
+* **Files Affected:** `Models/Settings/JwtSettings.cs` [NEW], `Models/Settings/UploadSettings.cs` [NEW], `Program.cs`, `Services/AuthService.cs`, `appsettings.json`, `SOLID_CleanCode_Report.md` [NEW], `docs/specifications/state.md`, `docs/project_log.md`
+* **Details/Decisions:** (1) Created JwtSettings strongly-typed configuration class — eliminates magic strings for JWT Key/Issuer/Audience duplicated across Program.cs and AuthService.cs. (2) Created UploadSettings static class with MaxPhotoUploadBytes constant — replaces magic number 52428800. (3) Refactored Program.cs to use JwtSettings via GetSection().Get<T>() with fail-fast validation. (4) Refactored AuthService to accept IOptions<JwtSettings> instead of raw IConfiguration — proper DIP. (5) Added Jwt configuration section to appsettings.json. (6) Created SOLID_CleanCode_Report.md with code examples from all 3 layers (AI/Backend/Frontend) covering all 5 SOLID principles and 5 Clean Code practices.
+* **Issues & Resolutions:** None

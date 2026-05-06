@@ -7,15 +7,16 @@ import './ResultPanel.css';
 
 interface ResultPanelProps {
   result:           IdentificationResponse;
-  onRegister:       () => void;
-  onIdentifyAgain:  () => void;
+  onRegister:            () => void;
+  onIdentifyAgain:       () => void;
+  onAddEncounterDetails: (encounterId: string) => void;
 }
 
 /**
  * Displays the AI identification result: known turtle profile or unknown alert.
  * Responsibility: render result state and offer next-action buttons.
  */
-const ResultPanel: React.FC<ResultPanelProps> = ({ result, onRegister, onIdentifyAgain }) => {
+const ResultPanel: React.FC<ResultPanelProps> = ({ result, onRegister, onIdentifyAgain, onAddEncounterDetails }) => {
   const isKnown = result.isKnown;
 
   return (
@@ -62,8 +63,16 @@ const ResultPanel: React.FC<ResultPanelProps> = ({ result, onRegister, onIdentif
 
               {/* Actions */}
               <div className="result-panel__actions">
+                {result.encounterId && (
+                  <button
+                    className="btn btn--secondary"
+                    onClick={() => onAddEncounterDetails(result.encounterId as string)}
+                  >
+                    Add Encounter Details
+                  </button>
+                )}
                 <Link
-                  to={`/turtles`}
+                  to={`/turtles/${result.turtleId}`}
                   className="btn btn--primary"
                 >
                   View Full Profile

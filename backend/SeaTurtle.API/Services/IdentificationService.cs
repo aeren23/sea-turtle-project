@@ -81,7 +81,10 @@ public class IdentificationService : IIdentificationService
                 BiologicalSide = aiResult.BiologicalSide,
                 Species = turtle.Species,
                 Nickname = turtle.Nickname,
-                PhotoUrl = $"/photos/{turtle.TurtleCode}/{Path.GetFileName(aiResult.SavedPhotoPath)}"
+                PhotoUrl = $"/photos/{turtle.TurtleCode}/{Path.GetFileName(aiResult.SavedPhotoPath?.Replace('\\', '/'))}",
+                EncounterId = encounter.Id,
+                BoundingBox = aiResult.BoundingBox,
+                DetectionConfidence = aiResult.DetectionConfidence
             };
         }
 
@@ -91,7 +94,9 @@ public class IdentificationService : IIdentificationService
             IsKnown = false,
             Score = aiResult.BestScore,
             BiologicalSide = aiResult.BiologicalSide,
-            SessionId = aiResult.SessionId
+            SessionId = aiResult.SessionId,
+            BoundingBox = aiResult.BoundingBox,
+            DetectionConfidence = aiResult.DetectionConfidence
         };
     }
 
@@ -126,15 +131,25 @@ public class IdentificationService : IIdentificationService
             Latitude = request.Latitude,
             Longitude = request.Longitude,
             Notes = request.Notes,
-            BiologicalSide = "unknown", // Fast approximation, real side is in FAISS
+            ConfidenceScore = request.Score,
+            BiologicalSide = string.IsNullOrEmpty(request.BiologicalSide) ? "unknown" : request.BiologicalSide,
             GalleryUpdated = true // Always true for a new registration
         };
         _context.Encounters.Add(encounter);
 
         // Note: For registrations, ai-service moves the photo to the new folder.
-        // We could fetch the final path from ai-service, but since we know it moves to tXXX,
-        // we omit adding a Photo record here immediately, or we could add a placeholder.
-        // For production, the RegisterResponse from AI should ideally return the final saved_photo_path.
+        // We now fetch the final path from ai-service to insert a Photo record.
+        if (!string.IsNullOrEmpty(aiResult.SavedPhotoPath))
+        {
+            var photo = new Photo
+            {
+                Encounter = encounter,
+                Turtle = turtle,
+                FilePath = aiResult.SavedPhotoPath,
+                UploadedAt = DateTime.UtcNow
+            };
+            _context.Photos.Add(photo);
+        }
 
         await _context.SaveChangesAsync();
 

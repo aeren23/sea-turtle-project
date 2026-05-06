@@ -1,6 +1,6 @@
 # SeaTurtle Photo-ID: Project State & History
 
-**Last Updated:** 2026-05-05 (Master Chronicle created)
+**Last Updated:** 2026-05-06 (SOLID/Clean Code fixes applied, compliance report created)
 
 This document tracks the high-level progress, completed milestones, and current active phase of the SeaTurtle Photo-ID project. It is intended to provide immediate context to any AI Agent joining the workspace.
 
@@ -12,6 +12,12 @@ All backend infrastructure is fully containerized. The React frontend is being i
 *   **Design Theme:** "Bioluminescent Field Station" — Syne + JetBrains Mono fonts, ocean deep palette, animated sonar rings, confidence gauges
 *   **API Coverage:** All 9 backend endpoints covered across 6 pages
 *   **Docker:** `seaturtle-frontend` service (Nginx + React) on port 3000 added to docker-compose.yml
+*   **Recent Fixes & Features:** 
+    *   Addressed UI data mapping bugs where Location, Confidence Score, and Biological Side were lost between Frontend and Backend during AI registration. 
+    *   Enabled generic profile editing for researcher roles. 
+    *   Converted Species dropdowns to datalists for free-text flexibility. 
+    *   Added Encounter Details modal to the identification flow for known turtles.
+    *   **Visualized AI Head Detection Bounding Box** directly on the uploaded image in the UI with dynamic scaling and a high-tech animated overlay.
 *   **Build Status:** ✅ TypeScript build passing — 0 errors, 215 modules
 
 ---

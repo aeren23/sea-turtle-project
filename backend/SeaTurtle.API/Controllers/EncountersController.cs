@@ -25,10 +25,10 @@ public class EncountersController : ControllerBase
         return Ok(encounters);
     }
 
-    [HttpGet("turtle/{turtleId:guid}")]
-    public async Task<ActionResult<IEnumerable<EncounterDto>>> GetByTurtleId(Guid turtleId)
+    [HttpGet("turtle/{identifier}")]
+    public async Task<ActionResult<IEnumerable<EncounterDto>>> GetByTurtleId(string identifier)
     {
-        var encounters = await _encounterService.GetEncountersByTurtleIdAsync(turtleId);
+        var encounters = await _encounterService.GetEncountersByTurtleIdAsync(identifier);
         return Ok(encounters);
     }
 

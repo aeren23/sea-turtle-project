@@ -27,12 +27,23 @@ public class TurtleService : ITurtleService
         return turtles.Select(MapToDto);
     }
 
-    public async Task<TurtleDto?> GetTurtleByIdAsync(Guid id)
+    public async Task<TurtleDto?> GetTurtleByIdAsync(string identifier)
     {
-        var turtle = await _context.Turtles
+        var query = _context.Turtles
             .Include(t => t.Encounters)
             .Include(t => t.Photos)
-            .FirstOrDefaultAsync(t => t.Id == id);
+            .AsQueryable();
+
+        if (Guid.TryParse(identifier, out var guid))
+        {
+            query = query.Where(t => t.Id == guid);
+        }
+        else
+        {
+            query = query.Where(t => t.TurtleCode.ToLower() == identifier.ToLower());
+        }
+
+        var turtle = await query.FirstOrDefaultAsync();
 
         if (turtle == null) return null;
 
@@ -46,11 +57,12 @@ public class TurtleService : ITurtleService
 
         turtle.Species = request.Species;
         turtle.Nickname = request.Nickname;
+        turtle.FirstSeenLocation = request.FirstSeenLocation;
 
         await _context.SaveChangesAsync();
 
         // Need includes for DTO mapping
-        return await GetTurtleByIdAsync(id);
+        return await GetTurtleByIdAsync(id.ToString());
     }
 
     public async Task<bool> DeleteTurtleAsync(Guid id)
@@ -70,7 +82,7 @@ public class TurtleService : ITurtleService
                            ?? turtle.Photos.FirstOrDefault();
 
         var photoUrl = profilePhoto != null 
-            ? $"/photos/{turtle.TurtleCode}/{Path.GetFileName(profilePhoto.FilePath)}" 
+            ? $"/photos/{turtle.TurtleCode}/{Path.GetFileName(profilePhoto.FilePath.Replace('\\', '/'))}" 
             : null;
 
         return new TurtleDto

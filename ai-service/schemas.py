@@ -105,6 +105,9 @@ class RegisterResponse(BaseModel):
         ..., description="Biological side the embedding was registered under"
     )
     message: str = Field(..., description="Human-readable status message")
+    saved_photo_path: str | None = Field(
+        None, description="Absolute path to the final saved photo"
+    )
 
 
 class HealthResponse(BaseModel):

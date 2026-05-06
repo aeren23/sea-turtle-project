@@ -298,6 +298,7 @@ async def register_turtle(request: RegisterRequest):
             turtle_id=new_id,
             biological_side=pending.biological_side,
             message=f"Turtle {new_id} registered successfully. Photo saved to images/{new_id}/.",
+            saved_photo_path=str(final_path),
         )
     except Exception as exc:
         logger.exception("Registration failed.")

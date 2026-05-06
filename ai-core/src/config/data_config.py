@@ -45,7 +45,7 @@ FAISS_INDEX_DIR = PROJECT_ROOT / "gallery_index"
 BIOLOGICAL_SIDES = ("left", "right", "top")
 
 # Cosine similarity threshold below which a match is considered "Unknown Individual"
-IDENTIFICATION_THRESHOLD = 0.6
+IDENTIFICATION_THRESHOLD = 0.80
 
 # Auto-add threshold: known turtle photos with score >= this value are
 # automatically added to the FAISS gallery. Below this, user confirmation is needed.

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { updateEncounter } from '../api/encounters.api';
 import { useIdentification } from '../hooks/useIdentification';
 import PhotoUploadZone from '../components/ui/PhotoUploadZone';
 import ResultPanel from '../components/ui/ResultPanel';
@@ -14,9 +15,18 @@ import './IdentifyPage.css';
 const registerSchema = z.object({
   species:           z.string().min(1, 'Species is required'),
   nickname:          z.string().optional(),
-  firstSeenLocation: z.string().optional(),
+  locationName:      z.string().optional(),
+  notes:             z.string().optional(),
 });
 type RegisterFormData = z.infer<typeof registerSchema>;
+
+const updateEncounterSchema = z.object({
+  locationName: z.string().optional(),
+  latitude:     z.number().nullable().optional(),
+  longitude:    z.number().nullable().optional(),
+  notes:        z.string().optional(),
+});
+type UpdateEncounterFormData = z.infer<typeof updateEncounterSchema>;
 
 /**
  * 3-step identification wizard page.
@@ -37,10 +47,33 @@ const IdentifyPage: React.FC = () => {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isRegisterModalOpen, setRegisterModalOpen] = useState(false);
+  const [isUpdateEncounterOpen, setUpdateEncounterOpen] = useState(false);
+  const [encounterToUpdate, setEncounterToUpdate] = useState<string | null>(null);
+  const [imageScale, setImageScale] = useState({ x: 1, y: 1 });
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight, offsetWidth, offsetHeight } = e.currentTarget;
+    if (naturalWidth && naturalHeight) {
+      setImageScale({
+        x: offsetWidth / naturalWidth,
+        y: offsetHeight / naturalHeight
+      });
+      setImageLoaded(true);
+    }
+  };
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: { species: 'Unknown' },
+  });
+
+  const {
+    register: registerUpdate,
+    handleSubmit: handleUpdateSubmit,
+    formState: { isSubmitting: isUpdatingEncounter }
+  } = useForm<UpdateEncounterFormData>({
+    resolver: zodResolver(updateEncounterSchema),
   });
 
   const handleIdentify = async () => {
@@ -59,11 +92,30 @@ const IdentifyPage: React.FC = () => {
       sessionId:         result.sessionId,
       species:           data.species || null,
       nickname:          data.nickname || null,
-      firstSeenLocation: data.firstSeenLocation || null,
+      locationName:      data.locationName || null,
+      notes:             data.notes || null,
+      score:             result.score,
+      biologicalSide:    result.biologicalSide,
     });
     if (registered) {
       setRegisterModalOpen(false);
       navigate('/turtles');
+    }
+  };
+
+  const handleEncounterUpdate = async (data: UpdateEncounterFormData) => {
+    if (!encounterToUpdate) return;
+    try {
+      await updateEncounter(encounterToUpdate, {
+        locationName: data.locationName || null,
+        latitude:     data.latitude ?? null,
+        longitude:    data.longitude ?? null,
+        notes:        data.notes || null,
+      });
+      setUpdateEncounterOpen(false);
+      navigate(`/turtles/${result?.turtleId}`);
+    } catch (err) {
+      console.error('Failed to update encounter', err);
     }
   };
 
@@ -129,12 +181,43 @@ const IdentifyPage: React.FC = () => {
 
       {/* Step 2: Result */}
       {step === 'result' && result && (
-        <div className="identify-page__content fade-up">
-          <ResultPanel
-            result={result}
-            onRegister={handleProceedRegister}
-            onIdentifyAgain={reset}
-          />
+        <div className="identify-page__content fade-up" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          
+          <div className="identify-page__preview-container">
+            <img 
+              src={selectedFile ? URL.createObjectURL(selectedFile) : ''} 
+              alt="Uploaded turtle" 
+              className="identify-page__preview-image"
+              onLoad={handleImageLoad}
+            />
+            {imageLoaded && result.boundingBox && result.boundingBox.length === 4 && (
+              <div 
+                className="bbox-overlay"
+                style={{
+                  left: `${result.boundingBox[0] * imageScale.x}px`,
+                  top: `${result.boundingBox[1] * imageScale.y}px`,
+                  width: `${result.boundingBox[2] * imageScale.x}px`,
+                  height: `${result.boundingBox[3] * imageScale.y}px`
+                }}
+              >
+                <div className="bbox-overlay-label">
+                  HEAD DETECTED {result.detectionConfidence ? `— ${(result.detectionConfidence * 100).toFixed(1)}%` : ''}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ flex: '1', minWidth: '320px' }}>
+            <ResultPanel
+              result={result}
+              onRegister={handleProceedRegister}
+              onIdentifyAgain={reset}
+              onAddEncounterDetails={(encounterId) => {
+                setEncounterToUpdate(encounterId);
+                setUpdateEncounterOpen(true);
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -158,11 +241,18 @@ const IdentifyPage: React.FC = () => {
           {/* Species */}
           <div className="field">
             <label className="field__label" htmlFor="reg-species">Species *</label>
-            <select id="reg-species" className="field__input" {...register('species')}>
+            <input
+              id="reg-species"
+              className="field__input"
+              list="species-list"
+              placeholder="e.g. Caretta caretta or unknown"
+              {...register('species')}
+            />
+            <datalist id="species-list">
               {TURTLE_SPECIES.map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
               ))}
-            </select>
+            </datalist>
             {errors.species && (
               <span className="field__error">{errors.species.message}</span>
             )}
@@ -190,7 +280,19 @@ const IdentifyPage: React.FC = () => {
               type="text"
               className="field__input"
               placeholder="e.g. Dalyan Beach, Turkey"
-              {...register('firstSeenLocation')}
+              {...register('locationName')}
+            />
+          </div>
+
+          {/* Notes */}
+          <div className="field">
+            <label className="field__label" htmlFor="reg-notes">Encounter Notes (optional)</label>
+            <textarea
+              id="reg-notes"
+              className="field__input"
+              rows={3}
+              placeholder="Treatment details, distinctive marks, behaviors..."
+              {...register('notes')}
             />
           </div>
 
@@ -208,6 +310,91 @@ const IdentifyPage: React.FC = () => {
               onClick={() => setRegisterModalOpen(false)}
             >
               Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Update Encounter Modal (for Known Turtles) */}
+      <Modal
+        isOpen={isUpdateEncounterOpen}
+        onClose={() => setUpdateEncounterOpen(false)}
+        title="Encounter Details"
+        width={500}
+      >
+        <form
+          onSubmit={handleUpdateSubmit(handleEncounterUpdate)}
+          className="identify-page__register-form"
+          noValidate
+        >
+          <p className="identify-page__register-intro">
+            Add location and notes for this new sighting of <strong>{result?.turtleId?.toUpperCase()}</strong>.
+          </p>
+
+          <div className="field">
+            <label className="field__label" htmlFor="enc-location">Location Name</label>
+            <input
+              id="enc-location"
+              type="text"
+              className="field__input"
+              placeholder="e.g. Dalyan Beach"
+              {...registerUpdate('locationName')}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+            <div className="field" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="field__label" htmlFor="enc-lat">Latitude</label>
+              <input
+                id="enc-lat"
+                type="number"
+                step="0.0001"
+                className="field__input"
+                placeholder="36.8505"
+                {...registerUpdate('latitude', { valueAsNumber: true })}
+              />
+            </div>
+            <div className="field" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="field__label" htmlFor="enc-lng">Longitude</label>
+              <input
+                id="enc-lng"
+                type="number"
+                step="0.0001"
+                className="field__input"
+                placeholder="28.1234"
+                {...registerUpdate('longitude', { valueAsNumber: true })}
+              />
+            </div>
+          </div>
+
+          <div className="field">
+            <label className="field__label" htmlFor="enc-notes">Notes</label>
+            <textarea
+              id="enc-notes"
+              className="field__input"
+              rows={4}
+              placeholder="Observation notes, behaviors..."
+              {...registerUpdate('notes')}
+            />
+          </div>
+
+          <div className="identify-page__register-actions">
+            <button
+              type="submit"
+              className="btn btn--primary"
+              disabled={isUpdatingEncounter}
+            >
+              {isUpdatingEncounter ? 'Saving...' : 'Save Encounter Details'}
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                setUpdateEncounterOpen(false);
+                navigate(`/turtles/${result?.turtleId}`);
+              }}
+            >
+              Skip
             </button>
           </div>
         </form>

@@ -16,7 +16,9 @@
 4. [The Pivot — Biological Asymmetry & ArcFace](#4-the-pivot--biological-asymmetry--arcface)
 5. [Phase 2.5 — Embedding Gallery & FAISS Vector Store](#5-phase-25--embedding-gallery--faiss-vector-store)
 6. [Phase 2.6 — YOLO Head Detection & Autonomous Pipeline](#6-phase-26--yolo-head-detection--autonomous-pipeline)
-7. [Appendix — Agent Roster & Methodology](#7-appendix--agent-roster--methodology)
+7. [Phase 3.0 — Backend API & Microservice Integration](#7-phase-30--backend-api--microservice-integration)
+8. [Phase 4.0 — Web Platform (Frontend)](#8-phase-40--web-platform-frontend)
+9. [Appendix — Agent Roster & Methodology](#9-appendix--agent-roster--methodology)
 
 ---
 
@@ -75,6 +77,12 @@ The CV Researcher agent produced a comprehensive OpenCV preprocessing pipeline t
 >
 > **DL Strategist** added:
 > > *"Resizing to a fixed dimension of 224×224 RGB images makes them suitable for input into convolutional neural networks (CNNs), ensuring uniformity across the dataset."*
+
+**Visual Verification — Preprocessing Pipeline Output:**
+
+![Preprocessing Pipeline Results — 5-stage transformation from raw underwater capture to standardized 224×224 neural input](ai-core/preprocessing_results.png)
+
+*Figure 1: Step-by-step transformation: (1) Original + BBox → (2) Cropped Head → (3) CLAHE Enhanced → (4) Color Corrected → (5) Final Resized 224×224. The pipeline addresses underwater light scattering, chromatic aberration, and geometric inconsistency.*
 
 ### 2.3. ADR-1: The Horizontal Flip Controversy
 
@@ -323,7 +331,7 @@ The CrewAI system was deployed to debate the autonomous pipeline architecture. T
 
 ### 6.3. Training Results
 
-![YOLO Training Curves](assets/yolo_head_training/results.png)
+![YOLO Training Curves](docs/reports/assets/yolo_head_training/results.png)
 
 **Final Model Performance (Best Epoch: 30):**
 
@@ -336,7 +344,7 @@ The CrewAI system was deployed to debate the autonomous pipeline architecture. T
 
 ### 6.4. Confusion Matrix — The Annotation Noise Discovery
 
-![YOLO Confusion Matrix](assets/yolo_head_training/confusion_matrix_normalized.png)
+![YOLO Confusion Matrix](docs/reports/assets/yolo_head_training/confusion_matrix_normalized.png)
 
 | True Class | Correct | Major Confusion | Miss Rate |
 |---|---|---|---|
@@ -350,7 +358,7 @@ The CrewAI system was deployed to debate the autonomous pipeline architecture. T
 
 ### 6.5. Root Cause: The Annotation Convention Problem
 
-![Training Batch Ground Truth](assets/yolo_head_training/train_batch0.jpg)
+![Training Batch Ground Truth](docs/reports/assets/yolo_head_training/train_batch0.jpg)
 
 During ground truth inspection, turtles swimming in **opposite directions** were labeled with the **same class**. The `annotations.json` `orientation` field mixed two conventions:
 
@@ -377,14 +385,14 @@ Three options were evaluated to handle YOLO orientation uncertainty:
 
 **Case A — Correct Orientation Prediction:**
 
-![Case A - Correct Orientation](assets/fallback_demo/case_a_correct_orientation.png)
+![Case A - Correct Orientation](docs/reports/assets/fallback_demo/case_a_correct_orientation.png)
 
 - **Turtle:** t001 | **YOLO Prediction:** head_top (confidence: 0.761) | **Actual:** top
 - Both single-index and fallback find the correct match. Overhead: ~3ms.
 
 **Case B — Wrong Orientation, Fallback Saves:**
 
-![Case B - Wrong Orientation, Fallback Saves](assets/fallback_demo/case_b_wrong_orientation_fallback.png)
+![Case B - Wrong Orientation, Fallback Saves](docs/reports/assets/fallback_demo/case_b_wrong_orientation_fallback.png)
 
 - **Turtle:** t015 | **YOLO Prediction:** head_right (confidence: 0.779) | **Actual:** left
 - YOLO was **confidently wrong** (0.779!) — a threshold-based fallback would NOT have caught this
@@ -392,7 +400,7 @@ Three options were evaluated to handle YOLO orientation uncertainty:
 
 **Side-by-Side Summary:**
 
-![Fallback Strategy Summary Comparison](assets/fallback_demo/summary_comparison.png)
+![Fallback Strategy Summary Comparison](docs/reports/assets/fallback_demo/summary_comparison.png)
 
 | Metric | Single-Index | Fallback (All Indexes) |
 |---|---|---|
@@ -454,9 +462,145 @@ Top-5 separation strong: 2nd best ~0.53 vs 1st ~0.98 — clear decision boundary
 
 ---
 
-## 7. Appendix — Agent Roster & Methodology
+## 7. Phase 3.0 — Backend API & Microservice Integration
 
-### 7.1. CrewAI Agent Configuration
+**Timeline:** 2026-05-05  
+**Objective:** Wrap the AI pipeline in a production-ready microservice architecture with a .NET 10 Web API gateway, PostgreSQL persistence, and Docker Compose orchestration.
+
+### 7.1. FastAPI AI Microservice (ai-service)
+
+The trained AI pipeline was encapsulated in a standalone FastAPI microservice that exposes two core endpoints:
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/v1/identify` | `POST` | Upload a raw photo → YOLO detection → ResNet embedding → FAISS search → return identity |
+| `/api/v1/register` | `POST` | Confirm an unknown turtle → assign new ID → add embedding to FAISS gallery |
+| `/health` | `GET` | Liveness check (pipeline loaded status) |
+
+**Key Design Decisions:**
+- **Singleton Pipeline:** YOLO + ResNet + FAISS loaded once at startup via FastAPI `lifespan` event. All requests share the same instance — zero cold-start per request.
+- **2-Phase Registration Flow:** `identify` returns a `session_id` for unknowns → client confirms → `register` creates the new turtle. Sessions expire after 10 minutes (lazy cleanup).
+- **Photo Storage Strategy:**
+  - Known turtles: saved to `images/tXXX/` directory
+  - Unknown turtles: staged in `images/_staging/` with 10-min TTL
+  - On registration: moved from staging to permanent directory
+  - Auto-gallery update: if match score ≥ 0.9, embedding auto-added to FAISS
+
+### 7.2. .NET 10 Web API Gateway (SeaTurtle.API)
+
+The .NET 10 API serves as the primary backend gateway, providing authentication, persistence, and bridging web clients to the AI microservice.
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/Auth/register` | `POST` | User registration (Researcher role) |
+| `/api/Auth/login` | `POST` | JWT token issuance |
+| `/api/Turtles` | `GET` | List all known turtles (paginated) |
+| `/api/Turtles/{id}` | `GET` | Get turtle detail with photo history |
+| `/api/Identification/identify` | `POST` | Forward photo to AI service, create encounter record |
+| `/api/Encounters` | `GET` | List all encounters (filterable) |
+| `/api/Encounters/{id}` | `GET` | Get specific encounter details |
+
+**Architecture:**
+- **ORM:** Entity Framework Core with PostgreSQL (code-first migrations)
+- **Security:** JWT Bearer authentication + Role-based authorization (Admin / Researcher)
+- **AI Bridge:** `IAiServiceClient` interface → `AiServiceClient` implementation using `HttpClient` + `JsonDocument` parsing
+- **Database Seeding:** `DbSeeder` parses FAISS metadata JSONs → seeds 438 turtles + 8,526 photos automatically
+- **Static Files:** `StaticFiles` middleware serves turtle photos directly from the AI dataset path
+
+### 7.3. Docker Compose Orchestration
+
+The entire backend is orchestrated via a single `docker-compose.yml`:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   Docker Network                        │
+│                                                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │ seaturtle-db │  │ seaturtle-ai │  │ seaturtle-api│  │
+│  │ PostgreSQL 16│  │ FastAPI      │  │ .NET 10      │  │
+│  │ Port: 5432   │  │ Port: 8000   │  │ Port: 5000   │  │
+│  │ Volume:pgdata│  │ YOLO+ResNet  │  │ JWT+EF Core  │  │
+│  └──────┬───────┘  │ +FAISS       │  │ +Swagger     │  │
+│         │          └──────┬───────┘  └──────┬───────┘  │
+│         │                 │                  │          │
+│         └─────────────────┼──────────────────┘          │
+│              Healthchecks + Dependency Ordering          │
+└─────────────────────────────────────────────────────────┘
+```
+
+| Service | Image | Size | Healthcheck |
+|---|---|---|---|
+| `seaturtle-db` | PostgreSQL 16 Alpine | ~80 MB | `pg_isready` |
+| `seaturtle-ai` | Python 3.10-slim + PyTorch + FAISS | ~3 GB | Python `urllib` |
+| `seaturtle-api` | .NET 10 ASP.NET runtime | ~200 MB | HTTP `/health` |
+
+**Bind Mounts:** The `ai-core/` directory is mounted into both AI and API containers at runtime, serving photos and model weights without inflating Docker image sizes.
+
+### 7.4. End-to-End Integration Test
+
+| Test | Path | Result |
+|---|---|---|
+| FastAPI direct | `POST :8000/api/v1/identify` → t002 | ✅ score=1.0 |
+| .NET via Docker | `POST :5000/api/Identification/identify` → t002 | ✅ score=1.0, encounter created |
+| Full flow | .NET → FastAPI → YOLO+ResNet+FAISS → Response → DB Write | ✅ End-to-end verified |
+
+---
+
+## 8. Phase 4.0 — Web Platform (Frontend)
+
+**Timeline:** 2026-05-05 (evening)  
+**Objective:** Build an immersive, research-grade web interface for DEKAMER field researchers to identify, register, and track sea turtles.
+
+### 8.1. Technology Stack
+
+| Component | Technology |
+|---|---|
+| Framework | Vite + React 18 + TypeScript |
+| State Management | Zustand |
+| HTTP Client | Axios |
+| Routing | React Router v6 |
+| Form Validation | React Hook Form + Zod |
+| Containerization | Nginx + Docker (port 3000) |
+
+### 8.2. Design Theme — "Bioluminescent Field Station"
+
+The frontend was designed with a **deep ocean** aesthetic to match the marine conservation context:
+- **Typography:** Syne (headings) + JetBrains Mono (data/metrics)
+- **Color Palette:** Deep navy (#0a0e1a), cyan accents (#00e5ff), bioluminescent gradients
+- **Animations:** Animated sonar rings on loading states, confidence gauge arcs, glassmorphism cards
+- **Layout:** 6 pages covering all 9 API endpoints
+
+### 8.3. Page Overview & Screenshots
+
+**Turtle Identification — Head Detection in Action:**
+
+![Head Detection Result — YOLO bounding box overlay with confidence score and identity match](docs/reports/assets/frontend_assets/head_detect.png)
+
+*The identification page allows researchers to upload a raw field photo. The system displays the YOLO-detected head region, orientation prediction, confidence score, and the top-5 identity matches from the FAISS gallery — all within seconds.*
+
+**Turtle Detail — Individual Profile View:**
+
+![Turtle Detail Page — Individual profile with photo history and encounter timeline](docs/reports/assets/frontend_assets/turtle_detail.png)
+
+*Each identified turtle has a dedicated profile page showing all historical photos, encounter dates, matched orientations, and confidence scores across time.*
+
+**Encounter History — Field Research Log:**
+
+![Encounters Page — Chronological list of all identification encounters with metadata](docs/reports/assets/frontend_assets/encounters.png)
+
+*The encounters page provides a filterable, chronological log of all identification events — linking each encounter to its turtle ID, photo, location, and AI confidence score.*
+
+### 8.4. Build Status
+
+- **TypeScript Compilation:** ✅ 0 errors, 215 modules
+- **Docker:** `seaturtle-frontend` service running on port 3000 via Nginx
+- **API Coverage:** All 9 backend endpoints integrated across 6 pages
+
+---
+
+## 9. Appendix — Agent Roster & Methodology
+
+### 9.1. CrewAI Agent Configuration
 
 The multi-agent system was implemented using the **CrewAI** framework with a hierarchical process model. The Orchestrator agent served as manager, delegating sub-tasks dynamically to specialist agents.
 
@@ -468,7 +612,7 @@ The multi-agent system was implemented using the **CrewAI** framework with a hie
 | DL Strategist | GPT-4o-mini | Architecture selection, loss function analysis, training strategy |
 | Marine Biologist | GPT-4o-mini | Biological constraints, scale pattern asymmetry validation |
 
-### 7.2. Summary of Architectural Decision Records (ADRs)
+### 9.2. Summary of Architectural Decision Records (ADRs)
 
 | ADR | Decision | Rationale |
 |---|---|---|
@@ -481,7 +625,7 @@ The multi-agent system was implemented using the **CrewAI** framework with a hie
 | ADR-7 | Single YOLO (3-class) over two models | Reduced complexity, single forward pass |
 | ADR-8 | Unconditional multi-index fallback search | Eliminates orientation misclassification risk entirely |
 
-### 7.3. Technology Stack
+### 9.3. Technology Stack
 
 | Component | Technology |
 |---|---|
@@ -495,7 +639,7 @@ The multi-agent system was implemented using the **CrewAI** framework with a hie
 | Multi-Agent System | CrewAI (hierarchical process) |
 | Metrics | pytorch-metric-learning (mAP, Top-K) |
 
-### 7.4. Dataset Statistics
+### 9.4. Dataset Statistics
 
 | Property | Value |
 |---|---|

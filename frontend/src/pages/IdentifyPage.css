@@ -164,3 +164,71 @@
   justify-content: flex-end;
   padding-top: var(--space-2);
 }
+
+/* Bounding Box Image Preview */
+.identify-page__preview-container {
+  flex: 1;
+  position: relative;
+  max-width: 50%;
+}
+
+.identify-page__preview-image {
+  width: 100%;
+  border-radius: var(--radius-lg);
+  display: block;
+  border: 1px solid var(--color-ocean-border);
+}
+
+.bbox-overlay {
+  position: absolute;
+  border: 2px solid var(--color-biolum-green);
+  box-shadow: 0 0 15px rgba(0, 200, 150, 0.4), inset 0 0 10px rgba(0, 200, 150, 0.2);
+  background-color: rgba(0, 200, 150, 0.05);
+  pointer-events: none; /* So it doesn't block hover on image */
+  animation: scan-pulse 2s infinite alternate;
+  z-index: 10;
+}
+
+/* Sci-fi corners */
+.bbox-overlay::before,
+.bbox-overlay::after {
+  content: '';
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border: 2px solid var(--color-biolum-green);
+}
+
+.bbox-overlay::before {
+  top: -2px;
+  left: -2px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.bbox-overlay::after {
+  bottom: -2px;
+  right: -2px;
+  border-left: none;
+  border-top: none;
+}
+
+.bbox-overlay-label {
+  position: absolute;
+  top: -24px;
+  left: -2px;
+  background: var(--color-biolum-green);
+  color: var(--color-ocean-deep);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 2px 2px 0 0;
+  white-space: nowrap;
+  box-shadow: 0 0 8px rgba(0, 200, 150, 0.4);
+}
+
+@keyframes scan-pulse {
+  0% { box-shadow: 0 0 5px rgba(0, 200, 150, 0.2), inset 0 0 5px rgba(0, 200, 150, 0.1); }
+  100% { box-shadow: 0 0 20px rgba(0, 200, 150, 0.6), inset 0 0 15px rgba(0, 200, 150, 0.3); }
+}

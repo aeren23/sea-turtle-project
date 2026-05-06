@@ -18,9 +18,17 @@ const apiClient = axios.create({
 
 /** Request interceptor — inject JWT Bearer token if present */
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`;
+  try {
+    const storageStr = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (storageStr) {
+      const parsed = JSON.parse(storageStr);
+      const token = parsed?.state?.token;
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+  } catch (e) {
+    // Ignore JSON parse errors gracefully
   }
   return config;
 });

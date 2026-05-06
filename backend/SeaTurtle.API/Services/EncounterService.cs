@@ -29,13 +29,24 @@ public class EncounterService : IEncounterService
         return encounters.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<EncounterDto>> GetEncountersByTurtleIdAsync(Guid turtleId)
+    public async Task<IEnumerable<EncounterDto>> GetEncountersByTurtleIdAsync(string turtleIdentifier)
     {
-        var encounters = await _context.Encounters
+        var query = _context.Encounters
             .Include(e => e.Turtle)
             .Include(e => e.User)
             .Include(e => e.Photos)
-            .Where(e => e.TurtleId == turtleId)
+            .AsQueryable();
+
+        if (Guid.TryParse(turtleIdentifier, out var guid))
+        {
+            query = query.Where(e => e.TurtleId == guid);
+        }
+        else
+        {
+            query = query.Where(e => e.Turtle.TurtleCode.ToLower() == turtleIdentifier.ToLower());
+        }
+
+        var encounters = await query
             .OrderByDescending(e => e.EncounterDate)
             .ToListAsync();
 
@@ -108,7 +119,7 @@ public class EncounterService : IEncounterService
             ConfidenceScore = encounter.ConfidenceScore,
             BiologicalSide = encounter.BiologicalSide,
             GalleryUpdated = encounter.GalleryUpdated,
-            PhotoUrls = encounter.Photos.Select(p => $"/photos/{encounter.Turtle?.TurtleCode}/{Path.GetFileName(p.FilePath)}").ToList()
+            PhotoUrls = encounter.Photos.Select(p => $"/photos/{encounter.Turtle?.TurtleCode}/{Path.GetFileName(p.FilePath.Replace('\\', '/'))}").ToList()
         };
     }
 }

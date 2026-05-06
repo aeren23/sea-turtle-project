@@ -11,4 +11,8 @@ public class AiIdentifyResult
     public string? SavedPhotoPath { get; set; }
     public bool GalleryUpdated { get; set; }
     public string? Error { get; set; }
+    
+    // Detection details
+    public float[]? BoundingBox { get; set; }
+    public float? DetectionConfidence { get; set; }
 }
